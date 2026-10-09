@@ -1,0 +1,3 @@
+# WAL-mode journal files are ephemeral — never commit them
+database.sqlite-wal
+database.sqlite-shm

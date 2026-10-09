@@ -1,0 +1,39 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('appointments', function (Blueprint $table) {
+            if (!Schema::hasColumn('appointments', 'late_checkin_reason')) {
+                $table->string('late_checkin_reason', 50)->nullable()->after('actual_check_in_at');
+            }
+            if (!Schema::hasColumn('appointments', 'late_checkin_other_reason')) {
+                $table->text('late_checkin_other_reason')->nullable()->after('late_checkin_reason');
+            }
+            if (!Schema::hasColumn('appointments', 'late_checkin_staff_notes')) {
+                $table->text('late_checkin_staff_notes')->nullable()->after('late_checkin_other_reason');
+            }
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('appointments', function (Blueprint $table) {
+            if (Schema::hasColumn('appointments', 'late_checkin_staff_notes')) {
+                $table->dropColumn('late_checkin_staff_notes');
+            }
+            if (Schema::hasColumn('appointments', 'late_checkin_other_reason')) {
+                $table->dropColumn('late_checkin_other_reason');
+            }
+            if (Schema::hasColumn('appointments', 'late_checkin_reason')) {
+                $table->dropColumn('late_checkin_reason');
+            }
+        });
+    }
+};
+

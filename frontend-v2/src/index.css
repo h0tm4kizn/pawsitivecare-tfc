@@ -1,0 +1,283 @@
+/* Load Tailwind's default styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Transparent scrollbars: retain scrolling without adding visual rails to pages or modals. */
+.scrollbar-teal {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.scrollbar-teal::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-teal::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.scrollbar-teal::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.scrollbar-teal::-webkit-scrollbar-thumb:hover {
+  background-color: transparent;
+}
+
+/* Remove default margins from html and body */
+
+
+html {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: radial-gradient(circle at 85% 12%, rgba(79, 198, 201, 0.18) 0%, #f4fbfc 58%) !important;
+  background-attachment: fixed !important;
+  min-height: 100vh !important;
+  width: 100%;
+}
+
+body,
+#root {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  min-height: 100vh !important;
+  width: 100%;
+}
+
+/* Makes anchor links scroll smoothly instead of jumping instantly. */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Global theme values used by Tailwind classes */
+:root {
+  /* Brand core */
+  --color-brand-dark: #173551;
+  --color-brand-dark-deep: #173551;
+  --color-brand-dark-hero: #0e2236;
+  --color-brand-dark-soft: #7a9ab0;
+  --color-brand-dark-light: #e5ecf0;
+
+  /* Orange */
+  --color-brand-orange: #FE7E4D;
+  --color-brand-orange-dark: #d35725;
+  --color-brand-orange-soft: #f5d4c7;
+  --color-brand-orange-light: #fae9dd;
+
+  /* Teal */
+  --color-brand-teal: #5bbcc1;
+  --color-brand-teal-dark: #24777a;
+  --color-brand-teal-soft: #d7f5f6;
+  --color-brand-teal-light: #e0f8f9;
+
+  /* Other brand colors */
+  --color-brand-green: #14964c;
+  --color-brand-red: #b32d2d;
+  --color-brand-pink: #F38797;
+  --color-brand-pink-soft: #fde8ec;
+  --color-brand-purple: #736CDE;
+  --color-brand-purple-soft: #e8e7f9;
+  --color-brand-white: #ffffff;
+  --color-brand-surface: #fafdfe;
+  --color-brand-receipt: #f4fbfc;
+  --color-brand-receipt-bg: #e0f8f9;
+
+  /* Service colors */
+  --color-brand-grooming: #a78bfa;
+  --color-brand-grooming-soft: #ede9fe;
+  --color-brand-daycare: #fbbf24;
+  --color-brand-daycare-soft: #fef9c3;
+  --color-brand-hotel: #fb7185;
+  --color-brand-hotel-soft: #ffe4e6;
+
+  /* App fonts */
+  --font-poppins: 'Poppins', sans-serif;
+  --font-bauhaus: 'Baumans', sans-serif;
+}
+
+/* Always render Bauhaus font in bold */
+.font-bauhaus {
+  font-weight: 700;
+}
+
+/* Basic reset for form controls */
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    /* Remove browser default styles so Tailwind classes look consistent */
+    @apply appearance-none bg-transparent border-0 outline-none;
+  }
+}
+
+/* Shared dropdown styles for consistent UI */
+@layer components {
+  .ui-dropdown-field {
+    @apply appearance-none rounded-2xl border border-brand-teal/30 bg-white px-3 py-2.5 text-sm font-semibold text-brand-dark transition;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 1px 4px rgba(23, 53, 81, 0.06);
+  }
+
+  .ui-dropdown-field:hover {
+    @apply border-brand-teal bg-brand-teal/5;
+  }
+
+  .ui-dropdown-field:focus {
+    @apply outline-none ring-2 ring-brand-teal/20 border-brand-teal bg-white;
+  }
+
+  .ui-dropdown-trigger {
+    @apply inline-flex items-center gap-2 rounded-2xl border border-brand-teal/30 bg-white px-4 py-2 text-xs font-bold text-brand-dark transition;
+    box-shadow: 0 2px 8px rgba(23, 53, 81, 0.08);
+  }
+
+  .ui-dropdown-trigger:hover {
+    @apply bg-brand-teal-light/20;
+  }
+
+  .ui-dropdown-menu {
+    @apply overflow-hidden rounded-2xl border border-brand-teal/20 bg-white;
+    box-shadow: 0 14px 30px rgba(23, 53, 81, 0.16);
+  }
+
+  .ui-dropdown-item {
+    @apply block w-full px-4 py-2 text-left text-xs font-bold text-brand-dark transition-colors;
+  }
+
+  .ui-dropdown-item:hover {
+    @apply bg-brand-teal/10;
+  }
+
+  .ui-dropdown-item-active {
+    @apply bg-brand-teal-light/35 text-brand-dark;
+  }
+}
+
+/* Hide the built-in password reveal controls in Edge/IE so only the custom eye icon shows. */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}
+
+/* Restore native calendar icon — grey, not orange */
+input[type='date'] {
+  accent-color: auto;
+}
+input[type='date']::-webkit-calendar-picker-indicator {
+  filter: grayscale(1);
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+/* Move only tagged date inputs' calendar icon slightly to the right */
+.date-input-shift-right::-webkit-calendar-picker-indicator {
+  margin-right: -4px;
+}
+
+/* Global transparent scrollbar — applies to every scrollable page and panel. */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: transparent !important; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: transparent !important; }
+* { scrollbar-width: thin; scrollbar-color: transparent transparent !important; }
+
+/* Mobile: hide visible scrollbars but keep touch scrolling enabled */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Gentle floating animation for CTA buttons */
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-float-soft {
+  animation: float-soft 2.8s ease-in-out infinite;
+}
+
+/* Typing dots animation */
+@keyframes typing-dot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+.animate-typing-dot {
+  animation: typing-dot 1.4s ease-in-out infinite;
+}
+
+.register-modal-glass {
+  background: rgba(255, 255, 255, 0.08);
+  border: 0;
+  box-shadow: 0 28px 80px rgba(14, 34, 54, 0.34);
+  backdrop-filter: blur(30px) saturate(1.3);
+  -webkit-backdrop-filter: blur(30px) saturate(1.3);
+}
+
+.register-glass-panel {
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.09) 42%, rgba(36, 119, 122, 0.28)),
+    rgba(23, 53, 81, 0.28);
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 0 34px rgba(255, 255, 255, 0.08),
+    0 24px 70px rgba(14, 34, 54, 0.28);
+  backdrop-filter: blur(34px) saturate(1.35);
+  -webkit-backdrop-filter: blur(34px) saturate(1.35);
+}
+
+.register-form-glass-panel {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(28, 64, 93, 0.51) 38%, rgba(18, 48, 76, 0.66)),
+    rgba(14, 34, 54, 0.62);
+  border-left-color: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    inset 0 0 42px rgba(255, 255, 255, 0.11),
+    0 28px 80px rgba(5, 20, 34, 0.34);
+  backdrop-filter: blur(42px) saturate(1.45);
+  -webkit-backdrop-filter: blur(42px) saturate(1.45);
+}
+
+.register-glass-panel > * {
+  position: relative;
+  z-index: 1;
+}

@@ -1,0 +1,67 @@
+# Python Virtual Environment
+.venv/
+.venv312/
+venv/
+venv314/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Database
+src/Database/*.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Test data (optional - uncomment if you don't want to upload test images)
+# test_data/
+
+# Model weights (downloaded automatically)
+*.h5
+*.hdf5
+*.pt
+
+# Logs
+*.log
+logs/*
+real_test_results.json
+
+# Preserve the latest Siamese training evidence for the capstone paper.
+!logs/run011-run012/
+!logs/run011-run012/*_metrics.csv
+!logs/run011-run012/*_pair_eval.csv
+!logs/run011-run012/*_pair_eval_thresholds.csv
+logs/run011-run012/*.json
+
+# Runtime biometric data
+**/Database/images/
+**/Database/*_engine_signature.txt
+roi-annotation/work/
+runs/
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local

@@ -1,0 +1,18 @@
+export const CANCELLATION_REASON_OPTIONS = [
+  { value: 'Client-Initiated: Schedule Conflict', label: 'Client-Initiated - Schedule Conflict' },
+  { value: 'Client-Initiated: Pet Health Issue', label: 'Client-Initiated - Pet Health Issue' },
+  { value: 'Client-Initiated: Travel Plan Changes', label: 'Client-Initiated - Travel Plan Changes' },
+  { value: 'Client-Initiated: Emergency Circumstances', label: 'Client-Initiated - Emergency Circumstances' },
+  { value: 'Client-Initiated: Financial Reasons', label: 'Client-Initiated - Financial Reasons' },
+  { value: 'Client-Initiated: No-Show (Policy Violation: 15-minute grace period expired)', label: 'Client-Initiated - No-Show (Policy Violation: 15-minute grace period expired)' },
+  { value: 'Station-Initiated: Staff Unavailability', label: 'Station-Initiated - Staff Unavailability' },
+  { value: 'Station-Initiated: Facility Maintenance', label: 'Station-Initiated - Facility Maintenance' },
+  { value: 'Station-Initiated: Safety/Temperament Concern (Based on Pet Assessment Form)', label: 'Station-Initiated - Safety/Temperament Concern (Based on Pet Assessment Form)' },
+  { value: 'Station-Initiated: Vaccination Non-Compliance (Mandatory check failed)', label: 'Station-Initiated - Vaccination Non-Compliance (Mandatory check failed)' },
+  { value: 'Station-Initiated: No Proof of Payment', label: 'Station-Initiated - No Proof of Payment' },
+  { value: 'Station-Initiated: Invalid Proof of Payment', label: 'Station-Initiated - Invalid Proof of Payment' },
+  { value: 'Station-Initiated: Double Booking / System Error', label: 'Station-Initiated - Double Booking / System Error' },
+  { value: 'Station-Initiated: Severe Coat Condition (Referral to Medical)', label: 'Station-Initiated - Severe Coat Condition (Referral to Medical)' },
+  { value: 'Station-Initiated: Service/Capacity Unavailable', label: 'Station-Initiated - Service/Capacity Unavailable' },
+  { value: '__other__', label: 'Others' },
+];

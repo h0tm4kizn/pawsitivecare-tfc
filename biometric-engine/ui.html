@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawsitiveCare — Biometric Engine</title>
+  <style>
+    /* ── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Brand tokens ───────────────────────────────────────── */
+    :root {
+      --dark:        #093448;
+      --dark-soft:   #7a9ab0;
+      --dark-light:  #e5ecf0;
+      --orange:      #e86a38;
+      --orange-soft: #f5d4c7;
+      --green:       #14964c;
+      --green-light: #eefcf4;
+      --teal:        #64d3d6;
+      --teal-light:  #e0f8f9;
+      --surface:     #fafdfe;
+      --white:       #ffffff;
+      --red:         #c0392b;
+      --red-light:   #fdecea;
+    }
+
+    body {
+      font-family: 'Poppins', 'Segoe UI', sans-serif;
+      background: var(--surface);
+      color: var(--dark);
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      background: var(--dark);
+      color: var(--white);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    header .logo-bar {
+      display: flex;
+      flex-direction: column;
+    }
+    header .brand { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--teal); }
+    header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+    header .divider { width: 1px; height: 40px; background: var(--dark-soft); margin: 0 8px; }
+    header .subtitle { font-size: 13px; color: var(--dark-soft); }
+
+    /* ── Species tabs ───────────────────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--dark-light);
+      padding: 0 32px;
+      background: var(--white);
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 14px 28px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--dark-soft);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn.active {
+      color: var(--dark);
+      border-bottom-color: var(--orange);
+    }
+    .tab-btn:hover:not(.active) { color: var(--dark); }
+
+    /* ── Main layout ────────────────────────────────────────── */
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+    .pane { display: none; }
+    .pane.active { display: block; }
+
+    /* Status pill */
+    .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+    .status-pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+    .status-pill.online  { background: var(--green-light); color: var(--green); }
+    .status-pill.offline { background: var(--red-light);   color: var(--red); }
+    .status-pill.checking { background: var(--dark-light); color: var(--dark-soft); }
+    .status-label { font-size: 13px; color: var(--dark-soft); }
+
+    /* ── Two-column panels ──────────────────────────────────── */
+    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 640px) { .panels { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--dark-light);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--dark-light);
+    }
+    .card-header.register { background: var(--teal-light); color: var(--dark); }
+    .card-header.scan     { background: var(--orange-soft); color: var(--dark); }
+    .card-body { padding: 20px; }
+
+    /* ── Form controls ──────────────────────────────────────── */
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--dark-soft);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input[type="text"] {
+      width: 100%;
+      border: 1.5px solid var(--dark-light);
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: var(--dark);
+      background: var(--surface);
+      margin-bottom: 14px;
+      transition: border-color 0.15s;
+      font-family: inherit;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--teal);
+    }
+
+    /* File drop zone */
+    .dropzone {
+      border: 2px dashed var(--dark-light);
+      border-radius: 8px;
+      padding: 28px 16px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 14px;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.dragging {
+      border-color: var(--teal);
+      background: var(--teal-light);
+    }
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .dropzone .dz-text { font-size: 13px; color: var(--dark-soft); pointer-events: none; }
+    .dropzone .dz-filename { font-size: 12px; color: var(--dark); font-weight: 600; margin-top: 4px; pointer-events: none; }
+
+    /* Preview */
+    .preview-img {
+      width: 100%;
+      max-height: 180px;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid var(--dark-light);
+      background: var(--dark-light);
+      display: none;
+      margin-bottom: 14px;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.15s;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-dark   { background: var(--dark);   color: var(--white); }
+    .btn-orange { background: var(--orange); color: var(--white); }
+    .btn:not(:disabled):hover { opacity: 0.88; }
+
+    /* ── Result box ─────────────────────────────────────────── */
+    .result-box {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+    .result-box.success  { background: var(--green-light); border: 1px solid #a3d9b8; color: var(--green); }
+    .result-box.error    { background: var(--red-light);   border: 1px solid #f5b7b1; color: var(--red); }
+    .result-box.info     { background: var(--teal-light);  border: 1px solid var(--teal); color: var(--dark); }
+
+    .result-box .result-title { font-weight: 700; margin-bottom: 6px; }
+    .result-box .result-row   { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .result-box .result-row:last-child { border-bottom: none; }
+    .result-box .result-key   { color: inherit; opacity: 0.75; }
+    .result-box .result-val   { font-weight: 600; }
+
+    /* Confidence bar */
+    .conf-bar-wrap { margin: 10px 0 4px; }
+    .conf-bar-bg {
+      background: rgba(0,0,0,0.08);
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .conf-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .conf-bar-fill.high { background: var(--green); }
+    .conf-bar-fill.mid  { background: var(--orange); }
+    .conf-bar-fill.low  { background: var(--red); }
+    .conf-label { font-size: 11px; opacity: 0.7; margin-top: 3px; }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: var(--dark-soft);
+      border-top: 1px solid var(--dark-light);
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-bar">
+    <span class="brand">The Fur Club Pet Station</span>
+  </div>
+  <div class="divider"></div>
+  <span class="subtitle">PawsitiveCare — Internal Testing UI</span>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('dog')">Dog Noseprint</button>
+  <button class="tab-btn"        onclick="switchTab('cat')">Cat Facial Recognition</button>
+</div>
+
+<div class="container">
+
+  <!-- ── DOG PANE ─────────────────────────────────────────── -->
+  <div class="pane active" id="pane-dog">
+    <div class="status-row">
+      <span class="status-pill checking" id="dog-status-pill">Checking</span>
+      <span class="status-label" id="dog-status-label">Connecting to Dog API (port 8000)...</span>
+    </div>
+    <div class="panels">
+      <!-- Register -->
+      <div class="card">
+        <div class="card-header register">Register Dog</div>
+        <div class="card-body">
+          <label>Pet Name</label>
+          <input type="text" id="dog-reg-name" placeholder="e.g. Buddy" />
+          <label>Noseprint Image</label>
+          <div class="dropzone" id="dog-reg-drop">
+            <input type="file" accept="image/*" id="dog-reg-file" onchange="onFileChange(this,'dog-reg-preview','dog-reg-drop')" />
+            <div class="dz-text">Click or drag an image here</div>
+            <div class="dz-filename" id="dog-reg-fname"></div>
+          </div>
+          <img class="preview-img" id="dog-reg-preview" />
+          <button class="btn btn-dark" onclick="register('dog')">Register</button>
+          <div class="result-box" id="dog-reg-result"></div>
+        </div>
+      </div>
+
+      <!-- Scan -->
+      <div class="card">
+        <div class="card-header scan">Scan Dog</div>
+        <div class="card-body">
+          <label>Noseprint Image</label>
+          <div class="dropzone" id="dog-scan-drop">
+            <input type="file" accept="image/*" id="dog-scan-file" onchange="onFileChange(this,'dog-scan-preview','dog-scan-drop')" />
+            <div class="dz-text">Click or drag an image here</div>
+            <div class="dz-filename" id="dog-scan-fname"></div>
+          </div>
+          <img class="preview-img" id="dog-scan-preview" />
+          <button class="btn btn-orange" onclick="scan('dog')">Scan</button>
+          <div class="result-box" id="dog-scan-result"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAT PANE ─────────────────────────────────────────── -->
+  <div class="pane" id="pane-cat">
+    <div class="status-row">
+      <span class="status-pill checking" id="cat-status-pill">Checking</span>
+      <span class="status-label" id="cat-status-label">Connecting to Cat API (port 8001)...</span>
+    </div>
+    <div class="panels">
+      <!-- Register -->
+      <div class="card">
+        <div class="card-header register">Register Cat</div>
+        <div class="card-body">
+          <label>Pet Name</label>
+          <input type="text" id="cat-reg-name" placeholder="e.g. Whiskers" />
+          <label>Facial Image</label>
+          <div class="dropzone" id="cat-reg-drop">
+            <input type="file" accept="image/*" id="cat-reg-file" onchange="onFileChange(this,'cat-reg-preview','cat-reg-drop')" />
+            <div class="dz-text">Click or drag an image here</div>
+            <div class="dz-filename" id="cat-reg-fname"></div>
+          </div>
+          <img class="preview-img" id="cat-reg-preview" />
+          <button class="btn btn-dark" onclick="register('cat')">Register</button>
+          <div class="result-box" id="cat-reg-result"></div>
+        </div>
+      </div>
+
+      <!-- Scan -->
+      <div class="card">
+        <div class="card-header scan">Scan Cat</div>
+        <div class="card-body">
+          <label>Facial Image</label>
+          <div class="dropzone" id="cat-scan-drop">
+            <input type="file" accept="image/*" id="cat-scan-file" onchange="onFileChange(this,'cat-scan-preview','cat-scan-drop')" />
+            <div class="dz-text">Click or drag an image here</div>
+            <div class="dz-filename" id="cat-scan-fname"></div>
+          </div>
+          <img class="preview-img" id="cat-scan-preview" />
+          <button class="btn btn-orange" onclick="scan('cat')">Scan</button>
+          <div class="result-box" id="cat-scan-result"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>PawsitiveCare &mdash; The Fur Club Pet Station, San Juan City</footer>
+
+<script>
+  const API = { dog: 'http://127.0.0.1:8000', cat: 'http://127.0.0.1:8001' };
+
+  /* ── Tab switching ─────────────────────────────────────── */
+  function switchTab(species) {
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('pane-' + species).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  /* ── File input handler ────────────────────────────────── */
+  function onFileChange(input, previewId, dropId) {
+    const file = input.files[0];
+    if (!file) return;
+    const fnameEl = document.querySelector('#' + dropId + ' .dz-filename');
+    if (fnameEl) fnameEl.textContent = file.name;
+    const preview = document.getElementById(previewId);
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+  }
+
+  /* ── Status check ──────────────────────────────────────── */
+  async function checkStatus(species) {
+    const pill  = document.getElementById(species + '-status-pill');
+    const label = document.getElementById(species + '-status-label');
+    try {
+      const r = await fetch(API[species], { signal: AbortSignal.timeout(4000) });
+      if (r.ok) {
+        pill.className = 'status-pill online';
+        pill.textContent = 'Online';
+        label.textContent = (await r.json());
+      } else {
+        throw new Error('Non-200');
+      }
+    } catch {
+      pill.className = 'status-pill offline';
+      pill.textContent = 'Offline';
+      label.textContent = `API not reachable at port ${species === 'dog' ? 8000 : 8001}. Start the server first.`;
+    }
+  }
+
+  /* ── Register ──────────────────────────────────────────── */
+  async function register(species) {
+    const fileInput = document.getElementById(species + '-reg-file');
+    const nameInput = document.getElementById(species + '-reg-name');
+    const resultEl  = document.getElementById(species + '-reg-result');
+    const btn = event.target;
+
+    if (!fileInput.files[0]) {
+      showResult(resultEl, 'error', 'No image selected', {});
+      return;
+    }
+
+    const form = new FormData();
+    form.append('file', fileInput.files[0]);
+    form.append('name', nameInput.value.trim());
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Registering...';
+    resultEl.style.display = 'none';
+
+    try {
+      const r = await fetch(API[species] + '/reg', { method: 'POST', body: form });
+      const data = await r.json();
+      if (data.error) { showResult(resultEl, 'error', data.error, {}); return; }
+      const isNew = data.message && data.message.toLowerCase().includes('successfully');
+      const speciesLabel = species === 'dog' ? 'Dog' : 'Cat';
+      const biometricType = species === 'dog' ? 'Noseprint' : 'Facial Recognition';
+      showResult(resultEl, isNew ? 'success' : 'info', data.message, {
+        Species: speciesLabel,
+        'Biometric Type': biometricType,
+        ...(data.name ? { 'Pet Name': data.name } : {}),
+      });
+    } catch (e) {
+      showResult(resultEl, 'error', 'Request failed — is the API running?', {});
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Register';
+    }
+  }
+
+  /* ── Scan ──────────────────────────────────────────────── */
+  async function scan(species) {
+    const fileInput = document.getElementById(species + '-scan-file');
+    const resultEl  = document.getElementById(species + '-scan-result');
+    const btn = event.target;
+
+    if (!fileInput.files[0]) {
+      showResult(resultEl, 'error', 'No image selected', {});
+      return;
+    }
+
+    const form = new FormData();
+    form.append('file', fileInput.files[0]);
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Scanning...';
+    resultEl.style.display = 'none';
+
+    try {
+      const r = await fetch(API[species] + '/scanning', { method: 'POST', body: form });
+      const data = await r.json();
+
+      if (data.error)   { showResult(resultEl, 'error', data.error, {}); return; }
+      if (data.message) { showResult(resultEl, 'info',  data.message, {}); return; }
+
+      const best     = data.best_match || {};
+      const score    = best.similarity_score || 0;
+      const name     = best.name || '—';
+      const met      = data.total_matches_above_threshold > 0;
+      const pct      = (score * 100).toFixed(1) + '%';
+      const speciesLabel = data.species === 'dog' ? 'Dog' : 'Cat';
+      const biometricType = data.species === 'dog' ? 'Noseprint' : 'Facial Recognition';
+
+      const barClass = score >= 0.90 ? 'high' : score >= 0.75 ? 'mid' : 'low';
+      const status = met
+        ? `${speciesLabel} identified`
+        : `No confident ${speciesLabel.toLowerCase()} match`;
+
+      showResult(
+        resultEl,
+        met ? 'success' : 'error',
+        status,
+        {
+          Species: speciesLabel,
+          'Biometric Type': biometricType,
+          'Pet Name': name,
+          Confidence: pct,
+          Threshold: (data.threshold * 100).toFixed(0) + '%',
+          'Matches above threshold': data.total_matches_above_threshold,
+        },
+        score,
+        barClass,
+      );
+    } catch (e) {
+      showResult(resultEl, 'error', 'Request failed — is the API running?', {});
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Scan';
+    }
+  }
+
+  /* ── Result renderer ───────────────────────────────────── */
+  function showResult(el, type, title, rows, score, barClass) {
+    el.className = 'result-box ' + type;
+    let html = `<div class="result-title">${title}</div>`;
+
+    if (score !== undefined) {
+      const w = (score * 100).toFixed(1);
+      html += `
+        <div class="conf-bar-wrap">
+          <div class="conf-bar-bg">
+            <div class="conf-bar-fill ${barClass}" style="width:${w}%"></div>
+          </div>
+          <div class="conf-label">Confidence: ${w}%</div>
+        </div>`;
+    }
+
+    for (const [k, v] of Object.entries(rows)) {
+      html += `<div class="result-row"><span class="result-key">${k}</span><span class="result-val">${v}</span></div>`;
+    }
+
+    el.innerHTML = html;
+    el.style.display = 'block';
+  }
+
+  /* ── Drag-over highlight ───────────────────────────────── */
+  document.querySelectorAll('.dropzone').forEach(dz => {
+    dz.addEventListener('dragover',  () => dz.classList.add('dragging'));
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragging'));
+    dz.addEventListener('drop',      () => dz.classList.remove('dragging'));
+  });
+
+  /* ── Init ──────────────────────────────────────────────── */
+  checkStatus('dog');
+  checkStatus('cat');
+</script>
+
+</body>
+</html>

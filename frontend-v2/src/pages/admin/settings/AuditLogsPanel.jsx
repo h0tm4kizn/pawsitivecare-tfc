@@ -1,0 +1,47 @@
+import { useEffect, useState } from 'react';
+import { RefreshCw, ScrollText, X } from 'lucide-react';
+import { adminJson } from '../../../api/adminData';
+import { AdminLoadState, AdminSkeleton } from '../../../components/admin/AdminLoading';
+import SelectDropdown from '../../../components/reusable-ui/SelectDropdown';
+import DateDropdown from '../../../components/reusable-ui/DateDropdown';
+
+const actionLabels = { create: 'Added', update: 'Updated', delete: 'Deleted', deactivate: 'Deactivated', reactivate: 'Reactivated', complete: 'Completed', cancel: 'Cancelled', verify: 'Verified', reject: 'Rejected', void: 'Voided', backup: 'Backup', restore: 'Restored', time_in: 'Time In', time_out: 'Time Out' };
+const modules = ['Appointments', 'Customers', 'Pets', 'Pet Assessments', 'Staff', 'Attendance', 'Commissions', 'Services', 'Promotions', 'Payments', 'Inventory', 'Walk-In Sales', 'Backup & Recovery', 'Settings', 'System'];
+const dateValue = (value) => value ? new Date(value).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : '-';
+const actionLabel = (action) => actionLabels[action] || 'Updated';
+const metadata = (log) => log.metadata || {};
+const recordLabel = (log) => metadata(log).affected_record?.label || metadata(log).affected_record?.id || '-';
+const resultLabel = (log) => log.status_code >= 200 && log.status_code < 400 ? 'Successful' : 'Failed';
+
+export default function AuditLogsPanel({ onClose, showClose = true }) {
+  const [filters, setFilters] = useState({ action: '', module: '', from: '', to: '' });
+  const [page, setPage] = useState(1);
+  const [state, setState] = useState({ rows: [], meta: null, loading: true, refreshing: false, error: '' });
+  const [selected, setSelected] = useState(null);
+  const load = async (nextPage = page, refresh = false) => {
+    setState((current) => ({ ...current, loading: current.rows.length === 0, refreshing: refresh, error: '' }));
+    try {
+      const params = new URLSearchParams({ page: String(nextPage), per_page: '25' });
+      Object.entries(filters).forEach(([key, value]) => value && params.set(key, value));
+      const json = await adminJson(`/api/admin/audit-logs?${params}`);
+      setState({ rows: json.data?.data || [], meta: json.data || null, loading: false, refreshing: false, error: '' });
+    } catch (error) { setState((current) => ({ ...current, loading: false, refreshing: false, error: error.message || 'Unable to load activity history.' })); }
+  };
+  useEffect(() => { load(1); }, [filters.action, filters.module, filters.from, filters.to]);
+  const setFilter = (key, value) => { setFilters((current) => ({ ...current, [key]: value })); setPage(1); };
+  const actionOptions = [{ value: '', label: 'All activity' }, ...Object.entries(actionLabels).map(([value, label]) => ({ value, label }))];
+  const moduleOptions = [{ value: '', label: 'All modules' }, ...modules.map((value) => ({ value, label: value }))];
+  return <section className="mt-4 overflow-hidden rounded-xl border border-brand-teal/20 bg-white shadow-sm">
+    <div className="flex items-center justify-between border-b border-brand-dark-light bg-brand-teal-light px-4 py-3"><div className="flex items-center gap-2"><ScrollText size={15} className="text-brand-teal" /><h2 className="text-sm font-extrabold text-brand-teal-dark">Activity History</h2></div>{showClose && <button type="button" onClick={onClose} className="rounded-lg p-1 text-brand-dark-soft hover:bg-white" aria-label="Close audit logs"><X size={15} /></button>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-dark-light px-4 py-3"><p className="text-xs font-semibold text-brand-dark-soft">A record of changes and administrative actions.</p><div className="flex flex-wrap items-center gap-2"><SelectDropdown className="!w-auto shrink-0" value={filters.action} onChange={(value) => setFilter('action', value)} options={actionOptions} buttonClassName="!w-auto !rounded-lg !px-2 !py-1.5" textClassName="!text-xs !font-semibold" /><SelectDropdown className="!w-auto shrink-0" value={filters.module} onChange={(value) => setFilter('module', value)} options={moduleOptions} buttonClassName="!w-auto !rounded-lg !px-2 !py-1.5" textClassName="!text-xs !font-semibold" /><DateDropdown className="!w-auto shrink-0" value={filters.from} onChange={(value) => setFilter('from', value)} placeholder="From date" buttonClassName="!h-auto !rounded-lg !px-2 !py-1.5 !text-xs" /><DateDropdown className="!w-auto shrink-0" value={filters.to} onChange={(value) => setFilter('to', value)} placeholder="To date" buttonClassName="!h-auto !rounded-lg !px-2 !py-1.5 !text-xs" /><button type="button" onClick={() => load(page, true)} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-brand-teal hover:bg-brand-teal/10"><RefreshCw size={12} /> Refresh</button></div></div>
+    <AdminLoadState loading={state.refreshing} error={state.error} onRetry={() => load(page, true)} />
+    {state.loading ? <AdminSkeleton label="Loading audit logs" rows={5} /> : state.rows.length === 0 ? <p className="px-4 py-8 text-center text-xs font-semibold text-brand-dark-soft">No activity recorded for these filters.</p> : <><div className="max-h-[420px] overflow-auto"><table className="w-full min-w-[720px] text-left text-xs"><thead className="sticky top-0 bg-brand-surface text-[10px] uppercase tracking-wider text-brand-dark-soft"><tr><th className="px-4 py-2">Time</th><th className="px-4 py-2">Done By</th><th className="px-4 py-2">Activity</th><th className="px-4 py-2">Details</th><th className="px-4 py-2">Result</th></tr></thead><tbody className="divide-y divide-brand-dark-light">{state.rows.map((log) => <tr key={log.id} onClick={() => setSelected(log)} className="cursor-pointer text-brand-dark hover:bg-brand-teal/5" tabIndex={0} onKeyDown={(event) => event.key === 'Enter' && setSelected(log)}><td className="whitespace-nowrap px-4 py-2.5 font-semibold">{dateValue(log.created_at)}</td><td className="px-4 py-2.5"><p className="font-bold">{log.actor_name || log.user?.name || 'Unknown user'}</p><p className="text-[10px] text-brand-dark-soft">{log.user?.role || log.actor_email || '-'}</p></td><td className="px-4 py-2.5"><span className="rounded-full bg-brand-teal/10 px-2 py-1 font-extrabold text-brand-teal">{actionLabel(log.action)}</span></td><td className="px-4 py-2.5 font-semibold">{metadata(log).description || metadata(log).module || 'System activity'}</td><td className="px-4 py-2.5 font-bold">{resultLabel(log)}</td></tr>)}</tbody></table></div>{state.meta?.last_page > 1 && <div className="flex items-center justify-between border-t border-brand-dark-light px-4 py-3 text-xs font-semibold text-brand-dark-soft"><span>Page {state.meta.current_page} of {state.meta.last_page}</span><div className="flex gap-2"><button type="button" disabled={!state.meta.prev_page_url} onClick={() => { setPage(page - 1); load(page - 1); }} className="rounded-lg border border-brand-teal/20 px-2.5 py-1.5 disabled:opacity-40">Previous</button><button type="button" disabled={!state.meta.next_page_url} onClick={() => { setPage(page + 1); load(page + 1); }} className="rounded-lg border border-brand-teal/20 px-2.5 py-1.5 disabled:opacity-40">Next</button></div></div>}</>}
+    {selected && <ActivityDetails log={selected} onClose={() => setSelected(null)} />}
+  </section>;
+}
+
+function ActivityDetails({ log, onClose }) {
+  const info = metadata(log); const changes = info.changes || {};
+  const rows = [['Performed By', log.actor_name || log.user?.name], ['Role', log.user?.role], ['Activity', actionLabel(log.action)], ['Module', info.module], ['Affected Record', recordLabel(log)], ['Description', info.description], ['Result', resultLabel(log)]];
+  return <div className="fixed inset-0 z-[400] flex items-center justify-center bg-brand-dark/40 p-4 backdrop-blur-sm" onClick={onClose}><div className="w-full max-w-lg rounded-2xl bg-white shadow-xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between border-b border-brand-dark-light px-5 py-4"><div><h3 className="font-extrabold text-brand-teal-dark">Activity Details</h3><p className="text-xs text-brand-dark-soft">{dateValue(log.created_at)}</p></div><button type="button" onClick={onClose} className="rounded-lg p-1 text-brand-dark-soft hover:bg-brand-surface" aria-label="Close activity details"><X size={16} /></button></div><div className="space-y-3 px-5 py-4 text-sm">{rows.filter(([, value]) => value).map(([label, value]) => <div key={label} className="flex items-start justify-between gap-4"><span className="font-semibold text-brand-dark-soft">{label}</span><span className="text-right font-bold text-brand-dark">{value}</span></div>)}{Object.keys(changes).length > 0 && <div className="border-t border-brand-dark-light pt-3"><p className="mb-2 font-extrabold text-brand-teal-dark">Changes</p>{Object.entries(changes).map(([field, change]) => <div key={field} className="mb-2 rounded-lg bg-brand-surface px-3 py-2"><p className="text-xs font-bold capitalize text-brand-dark">{field.replaceAll('_', ' ')}</p>{change.from !== undefined && <p className="text-xs text-brand-dark-soft">Previous: <strong>{String(change.from)}</strong></p>}{change.to !== undefined && <p className="text-xs text-brand-dark-soft">New: <strong>{String(change.to)}</strong></p>}</div>)}</div>}</div></div></div>;
+}

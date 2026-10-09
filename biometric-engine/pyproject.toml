@@ -1,0 +1,8 @@
+[tool.pylsp-mypy]
+enabled = true
+live_mode = true
+
+[tool.pyright]
+include = ["shared", "dog-noseprint/src", "cat-facial-recog/src"]
+extraPaths = ["shared"]
+pythonPath = ".venv312/Scripts/python.exe"

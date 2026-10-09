@@ -1,0 +1,61 @@
+/* Appointment Details Print Styles */
+
+/* Screen-only styles - hide business header on normal screen view */
+.hidden-on-screen {
+  display: none;
+}
+
+@media print {
+  /* Hide elements that shouldn't be printed */
+  .hidden-on-print,
+  button,
+  [aria-label="Close"] {
+    display: none !important;
+  }
+
+  /* Show business header for print */
+  .hidden-on-screen {
+    display: block !important;
+  }
+
+  /* Print optimization */
+  body {
+    background: white;
+  }
+
+  .no-scrollbar {
+    overflow: visible;
+  }
+
+  /* Adjust modal for print */
+  .fixed {
+    position: static !important;
+    backdrop-filter: none !important;
+    background: white !important;
+  }
+
+  /* Hide backdrop */
+  [class*="backdrop"] {
+    display: none !important;
+  }
+
+  /* Optimize spacing for print */
+  .max-h-\[66vh\] {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Improve text for print */
+  body {
+    color: #000;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+
+  /* Page breaks */
+  .page-break {
+    page-break-after: always;
+  }
+}

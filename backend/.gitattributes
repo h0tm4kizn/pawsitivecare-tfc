@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+# SQLite is a binary format — prevent git from mangling it with line-ending normalization
+database/database.sqlite binary
+
+*.blade.php diff=html
+*.css diff=css
+*.html diff=html
+*.md diff=markdown
+*.php diff=php
+
+/.github export-ignore
+CHANGELOG.md export-ignore
+.styleci.yml export-ignore
