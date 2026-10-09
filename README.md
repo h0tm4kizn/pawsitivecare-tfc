@@ -18,6 +18,11 @@ This public repository is intended to demonstrate the system's architecture,
 implementation, features, and technical approach without exposing
 confidential or operational data.
 
+The pet image datasets used for training and evaluation are not included in
+this public repository due to privacy, data-usage, and redistribution
+considerations. The repository retains the implementation and evaluation
+code necessary to document the biometric identification pipeline.
+
 ## Overview
 
 PawsitiveCare is a client-server web application for The Fur Club Pet Station. It centralizes pet, owner, appointment, service, hotel, inventory, payment documentation, staff operations, reporting, and access-control workflows in a responsive React interface.

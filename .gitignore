@@ -53,6 +53,10 @@ generated_embeddings/
 runtime-model-output/
 runtime_model_output/
 
+# Biometric pet image datasets (kept outside the public repository)
+/biometric-engine/cat-facial-recog/test_data/
+/biometric-engine/dog-noseprint/test_data/
+
 # Local/editor/OS files
 .DS_Store
 Thumbs.db
