@@ -10,6 +10,7 @@ import { downloadPetAssessmentRecordPdf } from '../../../../utils/petAssessmentB
 import { useSuppliesFeatureEnabled } from '../../../../utils/featureFlags';
 import { DAYCARE_MAX_PETS, getPetSpeciesCode } from '../../../../utils/daycareBooking';
 import { fetchPaymentAccounts } from '../../../../utils/paymentAccounts';
+import { hotelCheckInTimeError } from '../../../../utils/hotelCheckInTime';
 import WalkInSaleModal from '../../inventory/components/WalkInSaleModal';
 import {
   TODAY,
@@ -958,19 +959,19 @@ export default function BookAppointment({ isOpen, onClose, initialCategory = nul
     const groomingEntry = String(existingEntry?.category || '').toLowerCase() === 'grooming';
     const durationTier = String(existingEntry?.daycare_duration || '');
     const key = `${serviceId}|${dateIso}|${petsCount}|${durationTier}|${walkInMode ? 'walk-in' : 'scheduled'}`;
-    const applySlotAvailability = ({ slots, slotStatuses = [], walkInStartTime = '', walkInStatus = '', fullyBooked = false, shopClosed = false }) => {
+    const applySlotAvailability = ({ slots, slotStatuses = [], walkInStartTime = '', walkInStatus = '', fullyBooked = false, shopClosed = false, hotelOperatingHours = null }) => {
       setEntries((currentEntries) => currentEntries.map((entry) => {
         if (entry.key !== entryKey) return entry;
         const selectedTime = entry.start_time || '';
         const normalizedSelected = String(selectedTime).slice(0, 5);
         const keepSelected = slots.some((slot) => String(slot || '').slice(0, 5) === normalizedSelected)
           || String(walkInStartTime || '').slice(0, 5) === normalizedSelected
-          || (hotelEntry && !shopClosed && /^\d{2}:\d{2}$/.test(normalizedSelected)
-            && normalizedSelected >= '09:00' && normalizedSelected <= '17:00');
+          || (hotelEntry && !shopClosed && !hotelCheckInTimeError(normalizedSelected, hotelOperatingHours));
         return {
           ...entry,
           loadingSlots: false,
           availableSlots: slots,
+          hotelOperatingHours: hotelEntry ? hotelOperatingHours : null,
           slotStatuses,
           walkInStartTime,
           walkInStatus,
@@ -997,6 +998,7 @@ export default function BookAppointment({ isOpen, onClose, initialCategory = nul
     patchEntry(entryKey, {
       loadingSlots: true,
       availableSlots: groomingEntry || hotelEntry ? [] : existingEntry?.availableSlots?.length ? existingEntry.availableSlots : CLINIC_SLOTS,
+      ...(hotelEntry ? { hotelOperatingHours: null } : {}),
       slotStatuses: groomingEntry ? [] : (existingEntry?.slotStatuses || []),
       walkInStartTime: groomingEntry ? '' : (existingEntry?.walkInStartTime || ''),
       walkInStatus: groomingEntry ? '' : (existingEntry?.walkInStatus || ''),
@@ -1025,6 +1027,7 @@ export default function BookAppointment({ isOpen, onClose, initialCategory = nul
       const slotStatuses = Array.isArray(data?.data?.slot_statuses) ? data.data.slot_statuses : [];
       const walkInStartTime = String(data?.data?.walk_in_slot || '');
       const walkInStatus = String(data?.data?.walk_in_status || '');
+      const hotelOperatingHours = data?.data?.operating_hours || null;
       const shopClosed = reason === 'closed' || reason === 'blocked';
       const fullyBooked = !!(data?.data?.fully_booked || ['occupied', 'full'].includes(reason));
 
@@ -1051,7 +1054,7 @@ export default function BookAppointment({ isOpen, onClose, initialCategory = nul
       }
 
       if (!hotelEntry && !groomingEntry) slotsCacheRef.current.set(key, { slots: availableSlots, slotStatuses, walkInStartTime, walkInStatus, fullyBooked, shopClosed });
-      applySlotAvailability({ slots: availableSlots, slotStatuses, walkInStartTime, walkInStatus, fullyBooked, shopClosed });
+      applySlotAvailability({ slots: availableSlots, slotStatuses, walkInStartTime, walkInStatus, fullyBooked, shopClosed, hotelOperatingHours });
     } catch {
       patchEntry(entryKey, {
         loadingSlots: false,
@@ -1087,17 +1090,17 @@ export default function BookAppointment({ isOpen, onClose, initialCategory = nul
   const handleDateChange = (entryKey, dateIso) => {
     const entry = entries.find((item) => item.key === entryKey);
     if (walkInMode) {
-      patchEntry(entryKey, { appointment_date: walkInDate, start_time: '' });
+      patchEntry(entryKey, { appointment_date: walkInDate, start_time: '', hotel_checkin_input: null });
       patchEntry(entryKey, { availabilityError: '' });
       if (entry?.service_id) fetchSlots(entryKey, entry.service_id, walkInDate, 1);
       return;
     }
     if (dateIso && dateIso < TODAY) {
-      patchEntry(entryKey, { appointment_date: '', start_time: '' });
+      patchEntry(entryKey, { appointment_date: '', start_time: '', hotel_checkin_input: null });
       showValidationModal('Past dates cannot be selected.');
       return;
     }
-    patchEntry(entryKey, { appointment_date: dateIso, start_time: '' });
+    patchEntry(entryKey, { appointment_date: dateIso, start_time: '', hotel_checkin_input: null });
     if (!entry?.service_id) return;
     if (!dateIso) return;
     const petsCount = String(entry?.category || '').toLowerCase() === 'daycare' ? 1 + additionalPetIds.length : 1;
@@ -1365,7 +1368,8 @@ export default function BookAppointment({ isOpen, onClose, initialCategory = nul
     if (!entry.appointment_date) return false;
     if (entry.appointment_date < TODAY) return false;
     if (isHotelEntry(entry)) {
-      return !!(entry.hotel_checkout && Number(entry.hotel_nights) > 0 && entry.start_time);
+      return !!(entry.hotel_checkout && Number(entry.hotel_nights) > 0 && entry.start_time)
+        && !hotelCheckInTimeError(entry.hotel_checkin_input || entry.start_time, entry.hotelOperatingHours, entry.appointment_date);
     }
     return !!entry.start_time;
   });

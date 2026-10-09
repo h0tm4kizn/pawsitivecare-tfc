@@ -34,14 +34,14 @@ class MiddlewareAccessTest extends TestCase
 
     // ── 403 Tests ─────────────────────────────────────────────────────────────
 
-    public function test_staff_token_on_admin_only_route_returns_403(): void
+    public function test_staff_token_can_read_staff_directory(): void
     {
         $staff = $this->createStaffUser('front_desk');
         Sanctum::actingAs($staff);
 
         $response = $this->getJson('/api/admin/staff');
 
-        $response->assertStatus(403);
+        $response->assertOk();
     }
 
     public function test_customer_token_on_admin_only_route_returns_403(): void

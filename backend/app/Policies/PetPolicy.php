@@ -2,9 +2,10 @@
 
 namespace App\Policies;
 
+use App\Models\Appointment;
+use App\Models\Owner;
 use App\Models\Pet;
 use App\Models\User;
-use App\Models\Appointment;
 use Illuminate\Auth\Access\Response;
 
 class PetPolicy
@@ -41,8 +42,7 @@ class PetPolicy
                 ->exists();
         }
 
-        // Customer can only see their own pet
-        return $user->isCustomer() && $pet->owner_id === $user->owner?->id;
+        return $this->customerOwnsPet($user, $pet);
     }
 
     /**
@@ -67,16 +67,24 @@ class PetPolicy
     public function update(User $user, Pet $pet): bool
     {
         if ($user->canOperateFrontDesk()) return true;
-        // Customer can update their own pet — check owner_id via relationship or email fallback
-        if (!$user->isCustomer()) return false;
-        $ownerId = $user->owner?->id
-            ?? \App\Models\Owner::where('email', $user->email)->value('id');
-        return $pet->owner_id === $ownerId;
+        return $this->customerOwnsPet($user, $pet);
     }
 
     public function updateHealthForm(User $user, Pet $pet): bool
     {
         return $this->update($user, $pet) || $this->view($user, $pet);
+    }
+
+    private function customerOwnsPet(User $user, Pet $pet): bool
+    {
+        if (!$user->isCustomer()) {
+            return false;
+        }
+
+        $ownerId = $user->owner?->id
+            ?? Owner::where('email', $user->email)->value('id');
+
+        return $ownerId !== null && (string) $pet->owner_id === (string) $ownerId;
     }
 
     /**

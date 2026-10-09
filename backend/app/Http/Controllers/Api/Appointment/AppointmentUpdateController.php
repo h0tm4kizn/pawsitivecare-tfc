@@ -653,13 +653,11 @@ class AppointmentUpdateController extends Controller
             && $bookingSource === 'walk_in'
             && $this->availabilityService->isImmediateGroomingWalkIn($date, $startTime);
         if (strtolower((string) $serviceCategory) === 'hotel') {
-            $availableTimes = $this->availabilityService->hotelCheckInSlotsForDate($date);
-            $adminTimeAllowed = $this->isAdminHotelCheckInTimeAllowed($date, $startTime);
-            if (!$availableTimes && !$adminTimeAllowed) {
+            if (!$this->availabilityService->hotelOperatingHoursForDate($date)) {
                 return $this->error('No Hotel Suite check-in times are available for the selected date.', 422);
             }
-            if (!$startTime || (!in_array($this->availabilityService->normalizeClockTime($startTime), $availableTimes, true) && !$adminTimeAllowed)) {
-                return $this->error('The selected check-in time is no longer available. Please choose an available Hotel Suite time.', 422);
+            if (!$this->availabilityService->isHotelCheckInTimeWithinOperatingHours($date, $startTime)) {
+                return $this->error('Hotel check-in must be within the configured operating hours for the selected date.', 422);
             }
         }
 
@@ -716,38 +714,6 @@ class AppointmentUpdateController extends Controller
         }
 
         return null;
-    }
-
-    protected function isAdminHotelCheckInTimeAllowed(string $date, ?string $startTime): bool
-    {
-        if (!in_array(strtolower((string) Auth::user()?->role), ['admin', 'staff'], true) || !$startTime) {
-            return false;
-        }
-
-        $time = $this->availabilityService->normalizeClockTime($startTime);
-        if ($time < '09:00:00' || $time > '17:00:00') {
-            return false;
-        }
-
-        try {
-            $checkInDate = Carbon::createFromFormat('!Y-m-d', substr($date, 0, 10), 'Asia/Manila');
-            if (!$checkInDate || $checkInDate->format('Y-m-d') !== substr($date, 0, 10)) return false;
-        } catch (\Throwable) {
-            return false;
-        }
-
-        if (in_array($date, ShopHoursSetting::get('blocked_dates', []), true)) return false;
-        $hotelDays = ShopHoursSetting::get('schedule.hotel', [])['days'] ?? [];
-        if ($hotelDays && !in_array($checkInDate->dayOfWeek, array_map('intval', $hotelDays), true)) return false;
-
-        $dayHours = ShopHoursSetting::get('shop_hours', [])[strtolower($checkInDate->format('D'))] ?? null;
-        if (!$dayHours || strtolower(trim((string) $dayHours)) === 'closed') return false;
-        $dayHours = preg_replace('/[\x{2013}\x{2014}]/u', '-', (string) $dayHours);
-        if (!preg_match('/(\d{1,2}:\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}:\d{2})\s*(AM|PM)/i', $dayHours, $matches)) return false;
-
-        $opening = date('H:i:s', strtotime("{$matches[1]} {$matches[2]}"));
-        $closing = date('H:i:s', strtotime("{$matches[3]} {$matches[4]}"));
-        return $time >= $opening && $time <= $closing;
     }
 
     protected function configuredPaymentAccount(?string $accountId, ?string $reservationChannel): ?array

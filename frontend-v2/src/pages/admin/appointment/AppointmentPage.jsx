@@ -640,6 +640,11 @@ export default function AppointmentPage({ focusAppointmentId = null, focusEdit =
             closeStatsModal();
             setSelectedAppointment(appointment);
           }}
+          onReject={(appointment) => {
+            if (!appointment?.id || confirmingBookingId) return;
+            closeStatsModal();
+            setCancelTarget(appointment);
+          }}
           onConfirm={async (appointment) => {
             if (!appointment?.id || confirmingBookingId) return;
             setConfirmingBookingId(appointment.id);

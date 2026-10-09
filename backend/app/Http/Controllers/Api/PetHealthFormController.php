@@ -169,8 +169,8 @@ class PetHealthFormController extends Controller
 
     private function formForPetOnDate(Pet $pet, Carbon $date): ?PetHealthForm
     {
-        $start = $date->copy()->timezone('Asia/Manila')->startOfDay()->utc();
-        $end = $date->copy()->timezone('Asia/Manila')->endOfDay()->utc();
+        $start = $date->copy()->timezone('Asia/Manila')->startOfDay();
+        $end = $date->copy()->timezone('Asia/Manila')->endOfDay();
 
         return PetHealthForm::query()
             ->where('pet_id', $pet->id)

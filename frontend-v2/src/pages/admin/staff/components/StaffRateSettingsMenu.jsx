@@ -1,12 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, Settings2 } from 'lucide-react';
 import { apiFetch } from '../../../../api/apiClient';
 import FilterSelect from './FilterSelect';
 
 const inputClass = 'rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-dark outline-none focus:border-brand-teal';
 
-export default function StaffRateSettingsMenu({ staff = [] }) {
-  const [open, setOpen] = useState(false);
+export default function StaffRateSettingsMenu({
+  staff = [],
+  isOpen,
+  onClose,
+  showTrigger = true,
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isOpen ?? internalOpen;
   const [settings, setSettings] = useState([]);
   const [staffId, setStaffId] = useState('');
   const [rate, setRate] = useState('0');
@@ -14,13 +20,21 @@ export default function StaffRateSettingsMenu({ staff = [] }) {
   const [message, setMessage] = useState('');
   const menuRef = useRef(null);
 
+  const setOpen = useCallback((nextOpen) => {
+    if (isOpen === undefined) {
+      setInternalOpen(nextOpen);
+    } else if (!nextOpen) {
+      onClose?.();
+    }
+  }, [isOpen, onClose]);
+
   useEffect(() => {
     const close = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) setOpen(false);
     };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
-  }, []);
+  }, [setOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -77,12 +91,52 @@ export default function StaffRateSettingsMenu({ staff = [] }) {
 
   return (
     <div ref={menuRef} className="relative">
-      <button type="button" onClick={() => setOpen((value) => !value)} className="inline-flex items-center gap-2 rounded-xl border border-brand-teal/30 bg-white px-4 py-2.5 text-sm font-semibold text-brand-dark shadow-[0_2px_8px_rgba(23,53,81,0.06)] transition-colors hover:border-brand-teal hover:text-brand-teal-dark">
-        <Settings2 size={16} />
-        Staff Rate Settings
-        <ChevronDown size={15} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-[min(340px,calc(100vw-32px))] rounded-2xl border border-brand-teal/20 bg-white p-4 shadow-xl"><div className="mb-3"><p className="text-sm font-extrabold text-brand-dark">Commission rates</p><p className="mt-0.5 text-xs leading-5 text-brand-dark-soft">Set the default grooming rate or an individual staff override.</p></div><label className="block text-xs font-bold text-brand-dark-soft">Applies to<div className="mt-1"><FilterSelect value={staffId} onChange={setStaffId} options={staffOptions} widthClass="w-full" /></div></label><label className="mt-3 block text-xs font-bold text-brand-dark-soft">Grooming commission rate (%)<input className={inputClass + ' mt-1 w-full'} type="number" min="0" max="100" step="0.01" value={rate} onChange={(event) => setRate(event.target.value)} /></label>{message && <p className="mt-2 text-xs font-semibold text-brand-teal-dark">{message}</p>}<button type="button" disabled={saving} onClick={save} className="mt-4 w-full rounded-xl bg-brand-teal px-4 py-2.5 text-xs font-bold text-white transition hover:bg-brand-teal-dark disabled:opacity-50">{saving ? 'Saving...' : 'Save rate'}</button></div>}
+      {showTrigger && (
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="inline-flex items-center gap-2 rounded-xl border border-brand-teal/30 bg-white px-4 py-2.5 text-sm font-semibold text-brand-dark shadow-[0_2px_8px_rgba(23,53,81,0.06)] transition-colors hover:border-brand-teal hover:text-brand-teal-dark"
+        >
+          <Settings2 size={16} />
+          Staff Rate Settings
+          <ChevronDown size={15} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      )}
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-[min(340px,calc(100vw-32px))] rounded-2xl border border-brand-teal/20 bg-white p-4 shadow-xl">
+          <div className="mb-3">
+            <p className="text-sm font-extrabold text-brand-dark">Commission rates</p>
+            <p className="mt-0.5 text-xs leading-5 text-brand-dark-soft">Set the default grooming rate or an individual staff override.</p>
+          </div>
+          <label className="block text-xs font-bold text-brand-dark-soft">
+            Applies to
+            <div className="mt-1">
+              <FilterSelect value={staffId} onChange={setStaffId} options={staffOptions} widthClass="w-full" />
+            </div>
+          </label>
+          <label className="mt-3 block text-xs font-bold text-brand-dark-soft">
+            Grooming commission rate (%)
+            <input
+              className={`${inputClass} mt-1 w-full`}
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={rate}
+              onChange={(event) => setRate(event.target.value)}
+            />
+          </label>
+          {message && <p className="mt-2 text-xs font-semibold text-brand-teal-dark">{message}</p>}
+          <button
+            type="button"
+            disabled={saving}
+            onClick={save}
+            className="mt-4 w-full rounded-xl bg-brand-teal px-4 py-2.5 text-xs font-bold text-white transition hover:bg-brand-teal-dark disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save rate'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

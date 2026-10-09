@@ -17,6 +17,7 @@ import BookingModalSidebar from './BookingModalSidebar';
 import BookingModalView from './BookingModalView';
 import useBookingSubmit from './useBookingSubmit';
 import { useCustomerBookingStore } from '../../../stores/customerBookingStore';
+import { hotelCheckInTimeError } from '../../../utils/hotelCheckInTime';
 import {
   BANK_OPTIONS as GENERAL_BANK_OPTIONS,
   EWALLET_OPTIONS as GENERAL_EWALLET_OPTIONS,
@@ -348,7 +349,7 @@ export default function BookingModal({
       if (!item?.appointment_date || !item?.service?.id) {
         setSlotStateByIndex((prev) => ({
           ...prev,
-          [idx]: { slots: [], loading: false, fullyBooked: false, shopClosed: false },
+          [idx]: { slots: [], loading: false, fullyBooked: false, shopClosed: false, operatingHours: null },
         }));
         return;
       }
@@ -358,7 +359,14 @@ export default function BookingModal({
 
       setSlotStateByIndex((prev) => ({
         ...prev,
-        [idx]: { slots: [], loading: true, fullyBooked: false, shopClosed: false },
+        [idx]: {
+          ...(prev[idx] || {}),
+          slots: [],
+          loading: true,
+          fullyBooked: false,
+          shopClosed: false,
+          ...(item.category === 'hotel' ? { operatingHours: null } : {}),
+        },
       }));
 
       const petsCount = item.category === 'daycare' ? 1 + additionalPetIds.length : 1;
@@ -370,10 +378,7 @@ export default function BookingModal({
           const isClosed = reason === 'closed' || reason === 'blocked';
           const isOccupied = reason === 'occupied';
           const availableSlots = Array.isArray(d?.data?.slots) ? d.data.slots : [];
-          if (item.category === 'hotel' && item.start_time
-            && !availableSlots.some((slot) => String(slot).slice(0, 5) === String(item.start_time).slice(0, 5))) {
-            setItem(idx, { start_time: '' });
-          }
+          const operatingHours = d?.data?.operating_hours || null;
           setSlotStateByIndex((prev) => ({
             ...prev,
             [idx]: {
@@ -381,6 +386,7 @@ export default function BookingModal({
               loading: false,
               fullyBooked: d?.data?.fully_booked || isOccupied || false,
               shopClosed: isClosed,
+              operatingHours: item.category === 'hotel' ? operatingHours : null,
             },
           }));
         })
@@ -388,7 +394,7 @@ export default function BookingModal({
           if (requestId !== slotsRequestRef.current[idx]) return;
           setSlotStateByIndex((prev) => ({
             ...prev,
-            [idx]: { slots: [], loading: false, fullyBooked: false, shopClosed: false },
+            [idx]: { slots: [], loading: false, fullyBooked: false, shopClosed: false, operatingHours: null },
           }));
         });
     });
@@ -719,9 +725,10 @@ export default function BookingModal({
         || hotelCalendarError
         || !hotelCalendarAvailabilityVerified
       )) return false;
-      return bookingItems.every((item) => {
+      return bookingItems.every((item, index) => {
         if (!item.appointment_date) return false;
-        if (item.category === 'hotel')   return !!item.hotel_checkout && !!item.hotel_nights && !!item.start_time;
+        if (item.category === 'hotel')   return !!item.hotel_checkout && !!item.hotel_nights && !!item.start_time
+          && !hotelCheckInTimeError(item.hotel_checkin_input || item.start_time, slotStateByIndex[index]?.operatingHours, item.appointment_date);
         if (item.category === 'daycare') return !!item.start_time && !!item.size_label && daycareAllPetSizesSelected;
         return !!item.start_time;
       });

@@ -85,6 +85,7 @@ class StaffAttendanceController extends Controller
 
     public function identifyQr(Request $request)
     {
+        abort_unless($request->user()->isAdmin() || $request->user()->isStaff(), 403);
         $validated = $request->validate(['credential' => 'required|string|max:2048']);
         $staff = $this->qrCredentials->resolve($validated['credential']);
         if (!$staff) {
@@ -117,6 +118,7 @@ class StaffAttendanceController extends Controller
 
     public function qrTimeIn(Request $request)
     {
+        abort_unless($request->user()->isAdmin() || $request->user()->isStaff(), 403);
         $validated = $request->validate(['credential' => 'required|string|max:2048']);
         $staff = $this->qrCredentials->resolve($validated['credential']);
         if (!$staff) {
@@ -159,6 +161,7 @@ class StaffAttendanceController extends Controller
 
     public function qrTimeOut(Request $request)
     {
+        abort_unless($request->user()->isAdmin() || $request->user()->isStaff(), 403);
         $validated = $request->validate(['credential' => 'required|string|max:2048']);
         $staff = $this->qrCredentials->resolve($validated['credential']);
         if (!$staff) {

@@ -21,6 +21,12 @@ test('reference number only is treated as submitted payment information', () => 
   assert.equal(info.showNoPaymentProof, false);
 });
 
+test('whitespace-only references count as absent', () => {
+  const info = getNewBookingPaymentInfo({ ...base, reference_number: '   ' });
+  assert.equal(info.referenceNumber, '');
+  assert.equal(info.showNoPaymentProof, true);
+});
+
 test('proof only is displayed without requiring a reference number', () => {
   const info = getNewBookingPaymentInfo({ ...base, reservation_deposit_proof_available: true });
   assert.equal(info.referenceNumber, '');
@@ -44,6 +50,15 @@ test('no proof message appears only when reference and proof are both absent', (
   assert.equal(info.referenceNumber, '');
   assert.equal(info.hasProof, false);
   assert.equal(info.showNoPaymentProof, true);
+});
+
+test('does not invent missing historical recipient details', () => {
+  const info = getNewBookingPaymentInfo({
+    reservation_payment_account_id: 'gcash-old',
+    reservation_provider: 'Ambiguous legacy value',
+  });
+  assert.equal(info.paymentTo, 'Not provided');
+  assert.equal(info.paymentFrom, 'Not provided');
 });
 
 test('payment details remain isolated between bookings', () => {

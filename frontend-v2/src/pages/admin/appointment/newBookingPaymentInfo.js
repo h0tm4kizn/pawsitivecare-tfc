@@ -27,12 +27,12 @@ export const getNewBookingPaymentInfo = (raw = {}) => {
   const payerProvider = String(raw.reservation_payer_provider || raw.payment?.payer_provider || '').trim();
   const paymentFrom = payerProvider
     ? `${channelLabel ? `${channelLabel} · ` : ''}${payerProvider}`
-    : channelLabel || '—';
+    : channelLabel || 'Not provided';
   const account = raw.reservation_payment_account || raw.payment?.account || {};
   const paymentTo = [account.label, account.account_name, account.account_number]
     .map((value) => String(value || '').trim())
     .filter(Boolean)
-    .join(' · ') || String(raw.reservation_provider || raw.payment?.provider || '').trim() || '—';
+    .join(' · ') || 'Not provided';
 
   return {
     paymentFrom,

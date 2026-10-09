@@ -5,7 +5,7 @@ import { formatStaffDate, staffLabel } from '../staffUiUtils';
 import StaffAttendanceCommissionPanel from './StaffAttendanceCommissionPanel';
 import StaffQRCode from './StaffQRCode';
 
-export default function ViewStaffPanel({ staff, label = 'Selected Staff', onEdit, addToast = null }) {
+export default function ViewStaffPanel({ staff, label = 'Selected Staff', onEdit, addToast = null, readOnly = false }) {
   const [modal, setModal] = useState(null);
 
   if (!staff) {
@@ -26,18 +26,31 @@ export default function ViewStaffPanel({ staff, label = 'Selected Staff', onEdit
         </div>
         <div className="h-px bg-brand-teal/10" />
         <div className="space-y-3 p-3">
-          <StaffQRCode key={staff.id} staffId={staff.display_id} staffName={staff.name} staffUuid={staff.id} size={176} />
-          <div className="text-center">
-            <p className="text-[11px] text-brand-dark">{staffLabel(staff.staff_type)}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setModal('details')} className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-teal/30 px-3 py-2.5 text-xs font-bold text-brand-teal-dark transition hover:bg-brand-surface"><FileText size={14} strokeWidth={2.2} /> Details</button>
-            <button type="button" onClick={() => setModal('activity')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-teal px-3 py-2.5 text-xs font-bold text-white transition hover:bg-brand-teal-dark"><Activity className="shrink-0" size={15} strokeWidth={2.2} /> Activity</button>
-          </div>
+          {!readOnly && (
+            <>
+              <StaffQRCode key={staff.id} staffId={staff.display_id} staffName={staff.name} staffUuid={staff.id} size={176} />
+              <div className="text-center">
+                <p className="text-[11px] text-brand-dark">{staffLabel(staff.staff_type)}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setModal('details')} className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-teal/30 px-3 py-2.5 text-xs font-bold text-brand-teal-dark transition hover:bg-brand-surface"><FileText size={14} strokeWidth={2.2} /> Details</button>
+                <button type="button" onClick={() => setModal('activity')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-teal px-3 py-2.5 text-xs font-bold text-white transition hover:bg-brand-teal-dark"><Activity className="shrink-0" size={15} strokeWidth={2.2} /> Activity</button>
+              </div>
+            </>
+          )}
+          {readOnly && (
+            <div className="space-y-2 px-1 text-xs">
+              <Row label="Staff ID" value={staff.display_id || '-'} />
+              <Row label="Email" value={staff.email || '-'} />
+              <Row label="Contact" value={staff.contact_number || '-'} />
+              <Row label="Type" value={staffLabel(staff.staff_type)} />
+              <Row label="Created" value={formatStaffDate(staff.created_at)} />
+            </div>
+          )}
         </div>
       </div>
 
-      {modal && (
+      {!readOnly && modal && (
         <div className="fixed inset-0 z-[120] flex h-[100dvh] min-h-[100dvh] w-screen items-center justify-center bg-brand-dark/40 p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-label={modal === 'details' ? 'Staff details' : 'Staff activity'}>
         <div className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${modal === 'activity' ? 'max-w-4xl' : 'max-w-lg'}`}>
           <div className="flex shrink-0 items-center justify-between rounded-t-2xl bg-brand-teal px-4 py-3 text-white sm:px-6 sm:py-4">

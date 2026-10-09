@@ -336,6 +336,9 @@ Route::middleware(['auth:sanctum', 'role:admin,staff', 'audit.admin'])->group(fu
 
     // Staff list (read-only) — staff needs groomer list to complete grooming appointments
     Route::get('/admin/staff', [\App\Http\Controllers\Api\StaffController::class, 'index']);
+    Route::post('/admin/attendance/qr/identify', [StaffAttendanceController::class, 'identifyQr']);
+    Route::post('/admin/attendance/qr/confirm-time-in', [StaffAttendanceController::class, 'qrTimeIn']);
+    Route::post('/admin/attendance/qr/confirm-time-out', [StaffAttendanceController::class, 'qrTimeOut']);
 
     // Contact messages — staff can view and mark read
     Route::get('/admin/contact-messages', [ContactMessageController::class, 'index']);
@@ -426,9 +429,6 @@ Route::middleware(['auth:sanctum', 'role:admin', 'audit.admin'])->group(function
     Route::patch('/admin/attendance/{staffAttendance}/correct-time-out', [StaffAttendanceController::class, 'correctTimeOut']);
     Route::post('/admin/attendance/{staff}/time-in', [StaffAttendanceController::class, 'adminTimeIn']);
     Route::post('/admin/attendance/{staff}/time-out', [StaffAttendanceController::class, 'adminTimeOut']);
-    Route::post('/admin/attendance/qr/identify', [StaffAttendanceController::class, 'identifyQr']);
-    Route::post('/admin/attendance/qr/confirm-time-in', [StaffAttendanceController::class, 'qrTimeIn']);
-    Route::post('/admin/attendance/qr/confirm-time-out', [StaffAttendanceController::class, 'qrTimeOut']);
     Route::get('/admin/commissions', [StaffCommissionController::class, 'index']);
     Route::get('/admin/commissions/summary', [StaffCommissionController::class, 'summary']);
     Route::get('/admin/commissions/available-appointments', [StaffCommissionController::class, 'availableAppointments']);

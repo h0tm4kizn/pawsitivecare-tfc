@@ -6,6 +6,7 @@ import { fetchPaymentAccounts } from '../../../utils/paymentAccounts';
 import BookingDatePicker from './BookingDatePicker';
 import './bookingUtils';
 import { MAX_BOOKING_DATE, MAX_BOOKING_MONTH_INDEX } from './bookingModalUtils';
+import HotelCheckInTimePicker from '../../admin/appointment/components/HotelCheckInTimePicker';
 
 export default function BookingModalScheduleStep({ step, bookingItems, slotStateByIndex, hotelSuites, getServiceName, hotelMonth, setHotelMonth, MAX_BOOKING_MONTH_INDEX, hotelCalendarLoading, hotelCalendarSlow, hotelCalendarHasLoaded, hotelCalendarAvailabilityVerified, hotelCalendarError, setHotelCalendarRetryKey, hotelClosedDates, hotelUnavailableDates, hotelCapacityByDate, setItem, setError, diffDays, rangeHasBlockedNights, TODAY, toIso, formatHotelDateTime, SelectDropdown, fmtTime, hasHotel, finalEstimatedTotal, requiredHotelDeposit, estimatedCheckInBalance, modeOfPayment, setModeOfPayment, paymentFromProvider, setPaymentFromProvider, paymentFromOtherName, setPaymentFromOtherName, setBankName, setPaymentAccountId, setPaymentToAccount, setPaymentOtherName, PAYMENT_TYPE_OPTIONS, EWALLET_OPTIONS, BANK_OPTIONS, bankName, reservationOtherName, sanitizeText, referenceNumber, setReferenceNumber, depositProof, setDepositProof, sanitizeReferenceNumber }) {
   const [paymentAccounts, setPaymentAccounts] = useState([]);
@@ -186,6 +187,7 @@ export default function BookingModalScheduleStep({ step, bookingItems, slotState
                                               hotel_checkout: checkoutRemainsValid ? item.hotel_checkout : '',
                                               hotel_nights: checkoutRemainsValid ? String(nights) : '',
                                               start_time: dateStr === item.appointment_date ? item.start_time : '',
+                                              hotel_checkin_input: dateStr === item.appointment_date ? item.hotel_checkin_input : null,
                                             });
                                             setHotelDateTarget('check-out');
                                             setError('');
@@ -256,17 +258,19 @@ export default function BookingModalScheduleStep({ step, bookingItems, slotState
                             )}
                             {item.appointment_date && item.hotel_checkout && (
                               <div className="mt-2">
-                                <label className="text-xs font-semibold uppercase tracking-wide text-brand-dark-soft mb-2 block">Hotel Check-in Time</label>
-                                {rowSlotsLoading && rowSlots.length === 0 ? (
-                                  <p className="rounded-lg bg-white px-3 py-2 text-xs text-brand-dark-soft">Checking available check-in times…</p>
-                                ) : rowSlots.length === 0 ? (
-                                  <p className="rounded-lg bg-white px-3 py-2 text-xs text-brand-dark-soft">No Hotel Suite check-in times are available for this date.</p>
+                                <label className="text-xs font-semibold uppercase tracking-wide text-brand-dark-soft mb-2 block">HOTEL CHECK-IN TIME</label>
+                                {rowSlotsLoading && !slotState.operatingHours ? (
+                                  <p className="rounded-lg bg-white px-3 py-2 text-xs text-brand-dark-soft">Checking Hotel check-in hours…</p>
+                                ) : !slotState.operatingHours ? (
+                                  <p className="rounded-lg bg-white px-3 py-2 text-xs text-red-600" role="alert">Hotel check-in hours are unavailable for this date.</p>
                                 ) : (
-                                  <SelectDropdown
+                                  <HotelCheckInTimePicker
                                     value={item.start_time || ''}
-                                    onChange={(v) => { setItem(idx, { start_time: v }); }}
-                                    options={[{ value: '', label: 'Select check-in time' }, ...rowSlots.map((slot) => ({ value: slot, label: fmtTime(slot) }))]}
-                                    placeholder="Select check-in time"
+                                    draft={item.hotel_checkin_input}
+                                    date={item.appointment_date}
+                                    operatingHours={slotState.operatingHours}
+                                    onDraftChange={(draft) => setItem(idx, { hotel_checkin_input: draft })}
+                                    onChange={(value) => setItem(idx, { start_time: value })}
                                     disabled={rowSlotsLoading}
                                   />
                                 )}

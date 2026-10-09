@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { apiFetch } from '../../../api/apiClient';
 import {
   isPawsomeExtrasService,
@@ -36,7 +36,11 @@ export default function useBookingSubmit({
   setPendingAssessmentDrafts,
   setSubmitting,
 }) {
+  const submissionInFlight = useRef(false);
+
   return useCallback(async () => {
+    if (submissionInFlight.current) return;
+    submissionInFlight.current = true;
     setSubmitting(true);
     setError('');
     try {
@@ -79,7 +83,7 @@ export default function useBookingSubmit({
       for (const petId of assessmentPetIds) {
         const assessmentDraft = pendingAssessmentDrafts?.[String(petId)]
           || (String(pendingAssessmentDraft?.pet_id || '') === String(petId) ? pendingAssessmentDraft : null);
-        if (!assessmentDraft || assessmentDraft._existing_today) continue;
+        if (!assessmentDraft || assessmentDraft._existing_today || assessmentDraft._saved_to_server) continue;
         const assessmentRes = await apiFetch(`/api/my-pets/${petId}/health-form`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -146,24 +150,59 @@ export default function useBookingSubmit({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(res.status >= 500 ? 'Unable to submit the booking right now. Please try again later.' : data?.message || 'Booking failed. Please try again.');
+        const validationErrors = Object.values(data?.errors || {})
+          .flat()
+          .filter(Boolean);
+        const message = res.status === 401
+          ? 'Your session has expired. Please sign in again before booking.'
+          : res.status === 403
+            ? data?.message || 'Your account is not authorized to submit this booking.'
+            : res.status === 404
+              ? 'The booking service could not be reached. Please refresh and try again.'
+              : res.status === 409
+                ? data?.message || 'The selected suite or time is no longer available. Please choose another.'
+                : res.status === 422
+                  ? data?.message || validationErrors.join(' ') || 'Some booking details are invalid. Review them and try again.'
+                  : res.status === 429
+                    ? 'Too many booking attempts were made. Please wait a moment before trying again.'
+                    : res.status >= 500
+                      ? 'We could not confirm whether your booking was saved. Check My Appointments before trying again.'
+                      : data?.message || 'Booking failed. Please review the details and try again.';
+        console.error('Appointment booking request failed.', { status: res.status });
+        setError(message);
         setSubmitting(false);
         return;
       }
       const created = data?.data || data?.appointment || data || null;
+      if (!created?.id) {
+        console.error('Appointment booking response did not contain a saved appointment ID.', { status: res.status });
+        setError('The server response was incomplete. Check My Appointments before trying again.');
+        return;
+      }
+      let proofUploadFailed = false;
       if (depositProof && created?.id) {
-        const proofBody = new FormData();
-        proofBody.append('proof', depositProof);
-        const proofRes = await apiFetch(`/api/appointments/${created.id}/deposit-proof`, { method: 'POST', body: proofBody });
-        if (!proofRes.ok) throw new Error('The booking was created, but the proof of payment could not be uploaded.');
-        const proofData = await proofRes.json().catch(() => ({}));
-        const savedAppointment = proofData?.data || proofData?.appointment || null;
-        if (savedAppointment?.reservation_deposit_proof_available) {
-          Object.assign(created, savedAppointment);
+        try {
+          const proofBody = new FormData();
+          proofBody.append('proof', depositProof);
+          const proofRes = await apiFetch(`/api/appointments/${created.id}/deposit-proof`, { method: 'POST', body: proofBody });
+          if (!proofRes.ok) {
+            proofUploadFailed = true;
+            console.error('Booking was saved, but the deposit proof upload failed.', { status: proofRes.status });
+          } else {
+            const proofData = await proofRes.json().catch(() => ({}));
+            const savedAppointment = proofData?.data || proofData?.appointment || null;
+            if (savedAppointment?.reservation_deposit_proof_available) {
+              Object.assign(created, savedAppointment);
+            }
+          }
+        } catch {
+          proofUploadFailed = true;
+          console.error('Booking was saved, but the deposit proof upload could not be confirmed.');
         }
       }
+      created.proof_upload_failed = proofUploadFailed;
       setError('');
       setPendingAssessmentDraft(null);
       setPendingAssessmentDrafts({});
@@ -175,8 +214,9 @@ export default function useBookingSubmit({
         console.error('Booking completion callback failed:', callbackError);
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError('The connection was interrupted before we could confirm the booking. Check My Appointments before trying again.');
     } finally {
+      submissionInFlight.current = false;
       setSubmitting(false);
     }
   }, [additionalPetIds, bookingItems, daycareAllPetSizesSelected, daycareSelectedPetSizes, depositProof, form, hotelReservationComplete, isDaycareOnlyBooking, modeOfPayment, onBooked, pendingAssessmentDraft, pendingAssessmentDrafts, petSpecies, referenceNumber, requiredHotelDeposit, selectedDaycarePetIds, selectedPet, selectedPaymentAccountId, selectedReservationProvider, setBooked, setCreatedAppointment, setError, setPendingAssessmentDraft, setPendingAssessmentDrafts, setSubmitting]);

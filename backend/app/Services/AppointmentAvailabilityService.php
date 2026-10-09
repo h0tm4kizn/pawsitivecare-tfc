@@ -55,7 +55,11 @@ class AppointmentAvailabilityService
             }
             if (strtolower((string) $category) === 'hotel') {
                 $slots = $this->hotelCheckInSlotsForDate($date);
-                return ['status' => 200, 'data' => ['slots' => $slots, 'reason' => $slots ? null : 'closed'],
+                return ['status' => 200, 'data' => [
+                    'slots' => $slots,
+                    'operating_hours' => $this->hotelOperatingHoursForDate($date),
+                    'reason' => $slots ? null : 'closed',
+                ],
                     'message' => $slots ? 'Available slots retrieved successfully.' : 'No Hotel Suite check-in times are available for this date.'];
             }
 
@@ -407,12 +411,72 @@ class AppointmentAvailabilityService
 
     public function hotelCheckInSlotsForDate(string $date,?Carbon $now=null): array
     {
-        $date=substr($date,0,10);try{$checkIn=Carbon::createFromFormat('!Y-m-d',$date,'Asia/Manila');}catch(\Throwable){return [];}if(!$checkIn||$checkIn->format('Y-m-d')!==$date||in_array($date,ShopHoursSetting::get('blocked_dates',[]),true))return [];
-        $schedule=ShopHoursSetting::get('schedule.hotel',[]);if(!empty($schedule['days'])&&!in_array($checkIn->dayOfWeek,array_map('intval',$schedule['days']),true))return [];
-        $hours=ShopHoursSetting::get('shop_hours',[])[strtolower($checkIn->format('D'))]??null;if(!$hours||strtolower(trim((string)$hours))==='closed')return [];
-        $hours=preg_replace('/[\x{2013}\x{2014}]/u','-',(string)$hours);if(!preg_match('/(\d{1,2}:\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}:\d{2})\s*(AM|PM)/i',$hours,$m))return [];
-        try{$open=Carbon::createFromFormat('g:i A',strtoupper($m[1].' '.$m[2]),'Asia/Manila')->setDate($checkIn->year,$checkIn->month,$checkIn->day);$close=Carbon::createFromFormat('g:i A',strtoupper($m[3].' '.$m[4]),'Asia/Manila')->setDate($checkIn->year,$checkIn->month,$checkIn->day);}catch(\Throwable){return [];}if(!$close->greaterThan($open))return [];
+        $date=substr($date,0,10);
+        $operatingHours = $this->hotelOperatingHoursForDate($date);
+        if (!$operatingHours) return [];
+        try {
+            $checkIn = Carbon::createFromFormat('!Y-m-d', $date, 'Asia/Manila');
+            $open = Carbon::createFromFormat('!H:i', $operatingHours['open'], 'Asia/Manila')->setDate($checkIn->year, $checkIn->month, $checkIn->day);
+            $close = Carbon::createFromFormat('!H:i', $operatingHours['close'], 'Asia/Manila')->setDate($checkIn->year, $checkIn->month, $checkIn->day);
+        } catch (\Throwable) {
+            return [];
+        }
         $now=($now??now('Asia/Manila'))->copy()->setTimezone('Asia/Manila');$slots=[];for($slot=$open->copy();$slot->lessThan($close);$slot->addMinutes(30))if($date!==$now->toDateString()||$slot->greaterThan($now))$slots[]=$slot->format('H:i:s');return $slots;
+    }
+
+    public function hotelOperatingHoursForDate(string $date): ?array
+    {
+        $date = substr($date, 0, 10);
+        try {
+            $checkIn = Carbon::createFromFormat('!Y-m-d', $date, 'Asia/Manila');
+        } catch (\Throwable) {
+            return null;
+        }
+        if (!$checkIn || $checkIn->format('Y-m-d') !== $date
+            || in_array($date, ShopHoursSetting::get('blocked_dates', []), true)) {
+            return null;
+        }
+
+        $schedule = ShopHoursSetting::get('schedule.hotel', []);
+        if (!empty($schedule['days'])
+            && !in_array($checkIn->dayOfWeek, array_map('intval', $schedule['days']), true)) {
+            return null;
+        }
+
+        $hours = ShopHoursSetting::get('shop_hours', [])[strtolower($checkIn->format('D'))] ?? null;
+        if (!$hours || strtolower(trim((string) $hours)) === 'closed') {
+            return null;
+        }
+        $hours = preg_replace('/[\x{2013}\x{2014}]/u', '-', (string) $hours);
+        if (!preg_match('/(\d{1,2}:\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}:\d{2})\s*(AM|PM)/i', $hours, $matches)) {
+            return null;
+        }
+
+        try {
+            $open = Carbon::createFromFormat('g:i A', strtoupper($matches[1] . ' ' . $matches[2]), 'Asia/Manila');
+            $close = Carbon::createFromFormat('g:i A', strtoupper($matches[3] . ' ' . $matches[4]), 'Asia/Manila');
+        } catch (\Throwable) {
+            return null;
+        }
+        if (!$open || !$close || !$close->greaterThan($open)) {
+            return null;
+        }
+
+        return ['open' => $open->format('H:i'), 'close' => $close->format('H:i')];
+    }
+
+    public function isHotelCheckInTimeWithinOperatingHours(string $date, ?string $time): bool
+    {
+        if (!$time) {
+            return false;
+        }
+        $hours = $this->hotelOperatingHoursForDate($date);
+        if (!$hours) {
+            return false;
+        }
+
+        $normalizedTime = substr($this->normalizeClockTime($time), 0, 5);
+        return $normalizedTime >= $hours['open'] && $normalizedTime < $hours['close'];
     }
 
     private function daycareSlotIsAvailable(string $date,string $slot,?string $tier,$owner,int $pets,Collection $appointments): bool

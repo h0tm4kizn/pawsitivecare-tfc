@@ -8,6 +8,7 @@ use App\Models\ShopHoursSetting;
 use App\Models\StaffAttendance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 use Tests\TestDataHelper;
@@ -49,6 +50,42 @@ class AppointmentFlowTest extends TestCase
             'account_number' => '09171234567',
             'qr_code' => 'https://example.test/gcash-qr.png',
         ]]);
+    }
+
+    public function test_admin_can_edit_hotel_check_in_to_an_exact_minute(): void
+    {
+        $admin = $this->createAdminUser();
+        Sanctum::actingAs($admin);
+        $serviceId = $this->createService('hotel');
+        $suiteId = DB::table('hotel_suites')->where('name', 'The Cozy Paw Suite')->value('id');
+        $date = now('Asia/Manila')->addDays(5)->toDateString();
+        ShopHoursSetting::set('shop_hours', array_fill_keys(
+            ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+            '9:00 AM - 6:00 PM'
+        ));
+        ShopHoursSetting::set('schedule.hotel', ['days' => range(0, 6)]);
+
+        $created = $this->postJson('/api/appointments', [
+            'pet_id' => $this->petId,
+            'booked_by_owner_id' => $this->ownerId,
+            'service_id' => $serviceId,
+            'size_label' => 'small',
+            'pet_size' => 'Small',
+            'appointment_date' => $date,
+            'start_time' => '10:00:00',
+            'hotel_suite_id' => $suiteId,
+            'hotel_nights' => 1,
+            'reservation_channel' => 'cash',
+        ])->assertCreated();
+
+        $appointmentId = $created->json('data.id');
+        $this->putJson("/api/appointments/{$appointmentId}", [
+            'service_id' => $serviceId,
+            'appointment_date' => $date,
+            'start_time' => '10:15:00',
+            'hotel_nights' => 1,
+        ])->assertOk()
+            ->assertJsonPath('data.start_time', '10:15:00');
     }
 
     private function createServiceTier(string $serviceId, string $sizeLabel, float $price): void
@@ -726,9 +763,9 @@ class AppointmentFlowTest extends TestCase
         $response = $this->getJson("/api/appointments/available-slots?date={$date}&service_id={$hotelServiceId}");
 
         $response->assertStatus(200)
-            ->assertJsonCount(8, 'data.slots')
+            ->assertJsonCount(16, 'data.slots')
             ->assertJsonPath('data.slots.0', '09:00:00')
-            ->assertJsonPath('data.slots.7', '16:00:00');
+            ->assertJsonPath('data.slots.15', '16:30:00');
     }
 
     public function test_live_hotel_occupancy_counts_actual_checkins_only_and_returns_operational_times(): void
@@ -809,7 +846,7 @@ class AppointmentFlowTest extends TestCase
         $response = $this->getJson("/api/appointments/available-slots?date={$date}&service_id={$hotelServiceId}");
 
         $response->assertStatus(200)
-            ->assertJsonCount(8, 'data.slots')
+            ->assertJsonCount(16, 'data.slots')
             ->assertJsonMissing(['data.reason' => 'occupied']);
     }
 
@@ -868,7 +905,7 @@ class AppointmentFlowTest extends TestCase
             ->assertJsonPath('data.reason', 'closed');
     }
 
-    public function test_hotel_booking_rejects_a_check_in_time_outside_configured_hourly_slots(): void
+    public function test_hotel_booking_rejects_a_check_in_time_outside_configured_operating_hours(): void
     {
         $admin = $this->createAdminUser();
         Sanctum::actingAs($admin);
@@ -887,7 +924,69 @@ class AppointmentFlowTest extends TestCase
             'hotel_nights' => 1,
             'reservation_channel' => 'cash',
         ])->assertStatus(422)
-            ->assertJsonPath('message', 'The selected check-in time is no longer available. Please choose an available Hotel Suite time.');
+            ->assertJsonPath('message', 'Hotel check-in must be within the configured operating hours for the selected date.');
+    }
+
+    public function test_hotel_booking_accepts_any_minute_within_configured_operating_hours(): void
+    {
+        $admin = $this->createAdminUser();
+        Sanctum::actingAs($admin);
+        $serviceId = $this->createService('hotel');
+        $suiteId = DB::table('hotel_suites')->where('name', 'The Cozy Paw Suite')->value('id');
+        ShopHoursSetting::set('shop_hours', array_fill_keys(
+            ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+            '9:00 AM - 6:00 PM'
+        ));
+
+        $times = ['09:00:00', '09:07:00', '10:15:00', '12:00:00', '14:45:00', '17:59:00'];
+        foreach ($times as $index => $time) {
+            $response = $this->postJson('/api/appointments', [
+                'pet_id' => $this->petId,
+                'booked_by_owner_id' => $this->ownerId,
+                'service_id' => $serviceId,
+                'size_label' => 'small',
+                'pet_size' => 'Small',
+                'appointment_date' => now('Asia/Manila')->addDays(5 + ($index * 2))->toDateString(),
+                'start_time' => $time,
+                'hotel_suite_id' => $suiteId,
+                'hotel_nights' => 1,
+                'reservation_channel' => 'cash',
+            ]);
+            $response->assertCreated()->assertJsonPath('data.start_time', $time);
+        }
+
+        foreach (['00:00:00', '08:59:00', '18:00:00'] as $index => $time) {
+            $this->postJson('/api/appointments', [
+                'pet_id' => $this->petId,
+                'booked_by_owner_id' => $this->ownerId,
+                'service_id' => $serviceId,
+                'size_label' => 'small',
+                'pet_size' => 'Small',
+                'appointment_date' => now('Asia/Manila')->addDays(25 + ($index * 2))->toDateString(),
+                'start_time' => $time,
+                'hotel_suite_id' => $suiteId,
+                'hotel_nights' => 1,
+                'reservation_channel' => 'cash',
+            ])->assertStatus(422)
+                ->assertJsonPath('message', 'Hotel check-in must be within the configured operating hours for the selected date.');
+        }
+    }
+
+    public function test_hotel_time_availability_includes_the_operating_window(): void
+    {
+        $admin = $this->createAdminUser();
+        Sanctum::actingAs($admin);
+        $serviceId = $this->createService('hotel');
+        $date = now('Asia/Manila')->addDays(3)->toDateString();
+        ShopHoursSetting::set('shop_hours', array_fill_keys(
+            ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+            '9:00 AM - 6:00 PM'
+        ));
+
+        $this->getJson("/api/appointments/available-slots?date={$date}&service_id={$serviceId}")
+            ->assertOk()
+            ->assertJsonPath('data.operating_hours.open', '09:00')
+            ->assertJsonPath('data.operating_hours.close', '18:00');
     }
 
     public function test_admin_daycare_requires_top_level_duration(): void
@@ -997,7 +1096,7 @@ class AppointmentFlowTest extends TestCase
             'size_label' => 'small',
             'pet_size' => 'Small',
             'appointment_date' => now('Asia/Manila')->addDays(3)->toDateString(),
-            'start_time' => '09:00:00',
+            'start_time' => '09:07:00',
             'hotel_suite_id' => $suiteId,
             'hotel_nights' => 2,
             'reference_number' => 'HOTEL123',
@@ -1009,10 +1108,13 @@ class AppointmentFlowTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.status', 'pending')
             ->assertJsonPath('data.pet_size', 'Small')
+            ->assertJsonPath('data.start_time', '09:07:00')
             ->assertJsonPath('data.deposit', 650)
             ->assertJsonPath('data.reservation_payment_account_id', 'gcash-main')
             ->assertJsonPath('data.reservation_payer_provider', null);
         $this->assertNotNull($response->json('data.capacity_hold_expires_at'));
+        $this->assertSame('The Fur Club', $response->json('data.reservation_payment_account_snapshot.account_name'));
+        $this->assertSame('09171234567', $response->json('data.reservation_payment_account_snapshot.account_number'));
 
         $appointmentId = $response->json('data.id');
         $this->getJson("/api/my-appointments/{$appointmentId}")
@@ -1020,6 +1122,57 @@ class AppointmentFlowTest extends TestCase
             ->assertJsonPath('data.pet_size', 'Small')
             ->assertJsonPath('data.reservation_payment_account_id', 'gcash-main')
             ->assertJsonPath('data.reservation_payer_provider', null);
+    }
+
+    public function test_customer_hotel_booking_succeeds_before_optional_payment_snapshot_migration(): void
+    {
+        $customer = $this->createCustomerUser();
+        $ownerId = $this->createOwner($customer->id);
+        $petId = $this->createPet($ownerId, $this->speciesId, $this->breedId);
+        $this->createPetAssessment($petId, $ownerId);
+        $serviceId = $this->createService('hotel');
+        $suiteId = DB::table('hotel_suites')->where('name', 'The Cozy Paw Suite')->value('id');
+        Sanctum::actingAs($customer);
+
+        $this->assertTrue(Schema::hasColumn('appointments', 'reservation_payment_account_snapshot'));
+        Schema::table('appointments', function ($table): void {
+            $table->dropColumn('reservation_payment_account_snapshot');
+        });
+
+        $response = $this->postJson('/api/my-appointments', [
+            'pet_id' => $petId,
+            'service_id' => $serviceId,
+            'size_label' => 'small',
+            'pet_size' => 'Small',
+            'appointment_date' => now('Asia/Manila')->addDays(3)->toDateString(),
+            'start_time' => '09:15',
+            'hotel_suite_id' => $suiteId,
+            'hotel_nights' => 1,
+            'reference_number' => 'HOTEL915',
+            'reservation_channel' => 'e_wallet',
+            'reservation_payment_account_id' => 'gcash-main',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.start_time', '09:15');
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $response->json('data.id'),
+            'pet_id' => $petId,
+            'start_time' => '09:15',
+            'status' => 'pending',
+        ]);
+
+        $appointmentId = $response->json('data.id');
+        $this->getJson('/api/my-appointments?per_page=100')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $appointmentId, 'status' => 'pending']);
+
+        Sanctum::actingAs($this->createAdminUser());
+        $this->getJson('/api/appointments?per_page=100&status=pending')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $appointmentId, 'status' => 'pending']);
     }
 
     public function test_customer_appointment_history_includes_stored_groomer_name(): void

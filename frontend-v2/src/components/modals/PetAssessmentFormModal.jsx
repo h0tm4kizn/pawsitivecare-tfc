@@ -416,7 +416,7 @@ export default function PetAssessmentFormModal({
         return false;
       }
       setSuccess('Safety form saved successfully.');
-      onSaved?.();
+      onSaved?.(data?.data || payload);
       if (closeOnSuccess) onClose();
       return true;
     } catch {

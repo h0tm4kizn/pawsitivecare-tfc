@@ -14,7 +14,9 @@ export default function StaffTable({
   setActionMenuFor,
   actionMenuRef,
   onPickAction,
+  readOnly = false,
 }) {
+  const columnCount = readOnly ? 6 : 7;
   return (
     <div className="overflow-hidden rounded-xl border border-brand-teal/20 bg-white shadow-[0_6px_12px_rgba(23,53,81,0.08)]">
       <div className="overflow-x-auto">
@@ -27,13 +29,13 @@ export default function StaffTable({
               <th className="hidden px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-wider text-brand-dark sm:table-cell">Email</th>
               <th className="hidden px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-wider text-brand-dark sm:table-cell">Contact Number</th>
               <th className="hidden px-4 py-3 text-center text-[11px] font-extrabold uppercase tracking-wider text-brand-dark sm:table-cell">Status</th>
-              <th className="hidden px-4 py-3 text-center text-[11px] font-extrabold uppercase tracking-wider text-brand-dark sm:table-cell">Actions</th>
+              {!readOnly && <th className="hidden px-4 py-3 text-center text-[11px] font-extrabold uppercase tracking-wider text-brand-dark sm:table-cell">Actions</th>}
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={7}><AdminSkeleton label="Loading records" /></td></tr>}
+            {loading && <tr><td colSpan={columnCount}><AdminSkeleton label="Loading records" /></td></tr>}
             {!loading && !error && rows.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm font-semibold text-brand-dark-soft">No staff found.</td></tr>
+              <tr><td colSpan={columnCount} className="px-4 py-8 text-center text-sm font-semibold text-brand-dark-soft">No staff found.</td></tr>
             )}
             {!loading && rows.map((staff, index) => (
               <tr
@@ -58,7 +60,7 @@ export default function StaffTable({
                 <td className="hidden sm:table-cell px-4 py-3 text-xs text-brand-dark-soft">{staff.email || '-'}</td>
                 <td className="hidden sm:table-cell px-4 py-3 text-xs text-brand-dark-soft">{staff.contact_number || '-'}</td>
                 <td className="hidden sm:table-cell px-4 py-3 text-center"><StatusBadge status={staff.status} /></td>
-                <td className="hidden sm:table-cell px-4 py-3">
+                {!readOnly && <td className="hidden sm:table-cell px-4 py-3">
                   <div className="flex items-center justify-center gap-1.5">
                     <button
                       type="button"
@@ -115,7 +117,7 @@ export default function StaffTable({
                       )}
                     </div>
                   </div>
-                </td>
+                </td>}
               </tr>
             ))}
           </tbody>

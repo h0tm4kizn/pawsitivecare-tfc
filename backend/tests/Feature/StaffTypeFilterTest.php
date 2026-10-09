@@ -72,13 +72,13 @@ class StaffTypeFilterTest extends TestCase
         $this->assertCount(3, $staff);
     }
 
-    public function test_staff_cannot_access_staff_management_endpoint(): void
+    public function test_staff_can_read_staff_management_directory(): void
     {
         $staff = $this->createStaffUser('front_desk');
         Sanctum::actingAs($staff);
 
         $response = $this->getJson('/api/admin/staff');
 
-        $response->assertStatus(403);
+        $response->assertStatus(200);
     }
 }

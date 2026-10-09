@@ -104,14 +104,14 @@ export default function DateTimeStep({
                                 if (!selectable) return;
                                 setActiveItemIndex(index);
                                 if (!entry.appointment_date || entry.hotel_checkout) {
-                                  patchEntry(entry.key, { appointment_date: dateStr, hotel_nights: '', hotel_checkout: '', start_time: '' });
+                                  patchEntry(entry.key, { appointment_date: dateStr, hotel_nights: '', hotel_checkout: '', start_time: '', hotel_checkin_input: null });
                                   setFormError(''); return;
                                 }
                                 const checkIn = dateStr < entry.appointment_date ? dateStr : entry.appointment_date;
                                 const checkOut = dateStr < entry.appointment_date ? entry.appointment_date : dateStr;
                                 const nights = diffDays(checkIn, checkOut);
                                 if (nights < 1 || nights > 5) {
-                                  patchEntry(entry.key, { appointment_date: dateStr, hotel_nights: '', hotel_checkout: '', start_time: '' });
+                                  patchEntry(entry.key, { appointment_date: dateStr, hotel_nights: '', hotel_checkout: '', start_time: '', hotel_checkin_input: null });
                                   setFormError(''); return;
                                 }
                                 if (rangeHasBlockedNights(checkIn, checkOut, hotelUnavailableDates, hotelClosedDates)) {
@@ -166,6 +166,10 @@ export default function DateTimeStep({
                       ) : (
                         <HotelCheckInTimePicker
                           value={entry.start_time || ''}
+                          draft={entry.hotel_checkin_input}
+                          date={entry.appointment_date}
+                          operatingHours={entry.hotelOperatingHours}
+                          onDraftChange={(draft) => patchEntry(entry.key, { hotel_checkin_input: draft })}
                           onChange={(value) => patchEntry(entry.key, { start_time: value })}
                           disabled={entry.loadingSlots}
                         />

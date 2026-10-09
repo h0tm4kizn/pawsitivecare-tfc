@@ -116,9 +116,18 @@ export default function BookingModalPetStep({ step, hasDaycareCategory, selected
                                   </button>
                                 </div>
                               ) : (
-                                <div className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-700">
-                                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                                  Assessment form is complete.
+                                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-700">
+                                  <span className="flex items-center gap-2">
+                                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                                    Assessment form is complete.
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setAssessmentPet((prev) => (prev?.id === p.id ? null : p))}
+                                    className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 font-bold text-emerald-800 transition hover:bg-emerald-100"
+                                  >
+                                    {assessmentPet?.id === p.id ? 'Hide Form' : 'Review / Edit'}
+                                  </button>
                                 </div>
                               )
                             ) : (
@@ -142,15 +151,13 @@ export default function BookingModalPetStep({ step, hasDaycareCategory, selected
                                       )}
                                     </div>
                                   </div>
-                                  {!currentPetHasTicksOrFlea && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setAssessmentPet((prev) => (prev?.id === p.id ? null : p))}
-                                      className="shrink-0 rounded-lg bg-brand-teal px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-brand-teal-dark"
-                                    >
-                                      {assessmentPet?.id === p.id ? 'Hide Form' : 'Fill Out'}
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setAssessmentPet((prev) => (prev?.id === p.id ? null : p))}
+                                    className="shrink-0 rounded-lg bg-brand-teal px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-brand-teal-dark"
+                                  >
+                                    {assessmentPet?.id === p.id ? 'Hide Form' : currentPetHasTicksOrFlea ? 'Review / Edit' : 'Fill Out'}
+                                  </button>
                                 </div>
                               </div>
                             )
@@ -164,8 +171,7 @@ export default function BookingModalPetStep({ step, hasDaycareCategory, selected
                                 theme="pet_owner"
                                 serviceId={activeItem?.service?.id || null}
                                 serviceCategory={activeItem?.category || activeItem?.service?.category || ''}
-                                deferSave
-                                saveLabel="Save for Booking"
+                                saveLabel="Save Assessment"
                                 initialDraft={pendingAssessmentDrafts?.[String(p.id)] || (String(pendingAssessmentDraft?.pet_id || '') === String(p.id) ? pendingAssessmentDraft : null)}
                                 onClose={() => setAssessmentPet(null)}
                                 onSaved={(payload) => {
@@ -174,8 +180,9 @@ export default function BookingModalPetStep({ step, hasDaycareCategory, selected
                                     payload?.vaccine_rabies ||
                                     draftVaccines.some((name) => String(name || '').toLowerCase().includes('rabies'))
                                   );
-                                  setPendingAssessmentDraft({ ...payload, pet_id: p.id });
-                                  setPendingAssessmentDrafts((prev) => ({ ...prev, [String(p.id)]: { ...payload, pet_id: p.id } }));
+                                  const savedDraft = { ...payload, pet_id: p.id, _saved_to_server: true };
+                                  setPendingAssessmentDraft(savedDraft);
+                                  setPendingAssessmentDrafts((prev) => ({ ...prev, [String(p.id)]: savedDraft }));
                                   setPetAssessmentFlags((prev) => ({
                                     ...prev,
                                     [p.id]: {

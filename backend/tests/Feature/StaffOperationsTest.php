@@ -110,14 +110,41 @@ class StaffOperationsTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_staff_and_customers_cannot_use_admin_qr_attendance_endpoints(): void
+    public function test_staff_can_use_qr_attendance_but_customers_cannot(): void
     {
         $staff = $this->createStaffUser();
         $staff->update(['display_id' => 'STF260502']);
         Sanctum::actingAs($staff);
+        $credential = $this->postJson('/api/staff/qr-credential')->assertOk()->json('data.credential');
+        $this->postJson('/api/admin/attendance/qr/identify', ['credential' => $credential])
+            ->assertOk()
+            ->assertJsonPath('data.staff.id', $staff->id);
+        $this->postJson('/api/admin/attendance/qr/confirm-time-in', ['credential' => $credential])
+            ->assertCreated();
+        $this->assertDatabaseHas('staff_attendance', [
+            'staff_id' => $staff->id,
+            'recorded_by' => $staff->id,
+            'recording_method' => 'qr_admin',
+        ]);
+        $this->postJson('/api/admin/attendance/qr/identify', ['credential' => $credential])
+            ->assertOk()
+            ->assertJsonPath('data.next_action', 'time_out');
+        $this->postJson('/api/admin/attendance/qr/confirm-time-out', ['credential' => $credential])
+            ->assertOk();
+        $this->postJson('/api/admin/staff', [
+            'name' => 'Unauthorized Staff',
+            'email' => 'unauthorized-staff@example.test',
+            'password' => 'Password123!',
+            'staff_type' => 'front_desk',
+        ])->assertForbidden();
+        $this->putJson("/api/admin/staff/{$staff->id}", ['name' => 'Modified Name'])->assertForbidden();
+        $this->deleteJson("/api/admin/staff/{$staff->id}")->assertForbidden();
+        $this->postJson('/api/admin/commission-settings', [])->assertForbidden();
+
+        $customer = $this->createCustomerUser();
+        Sanctum::actingAs($customer);
         $this->postJson('/api/admin/attendance/qr/identify', ['credential' => 'forged'])->assertForbidden();
         $this->postJson('/api/admin/attendance/qr/confirm-time-in', ['credential' => 'forged'])->assertForbidden();
-        $this->postJson('/api/staff/qr-credential')->assertOk();
 
         Sanctum::actingAs($this->createCustomerUser());
         $this->postJson('/api/admin/attendance/qr/identify', ['credential' => 'forged'])->assertForbidden();

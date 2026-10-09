@@ -421,10 +421,12 @@ class AppointmentBookingService
             'reservation_channel'  => $validated['reservation_channel'] ?? null,
             'reservation_provider' => $validated['reservation_provider'] ?? null,
             'reservation_payment_account_id' => $validated['reservation_payment_account_id'] ?? null,
+            'reservation_payment_account_snapshot' => $this->paymentAccountSnapshot($validated['reservation_payment_account_id'] ?? null),
             'reservation_payer_provider' => $validated['reservation_payer_provider'] ?? null,
             'total_price'          => $basePrice,
         ];
 
+        $appointmentData = $this->filterAppointmentDataToExistingColumns($appointmentData);
         $appointment = Appointment::create($appointmentData);
         $this->createBookedPackages($appointment, $orderedServices, $pricesByService, $appointment->status);
 
@@ -878,12 +880,14 @@ class AppointmentBookingService
                 'reservation_channel'  => $validated['reservation_channel'] ?? null,
                 'reservation_provider' => $validated['reservation_provider'] ?? null,
                 'reservation_payment_account_id' => $validated['reservation_payment_account_id'] ?? null,
+                'reservation_payment_account_snapshot' => $this->paymentAccountSnapshot($validated['reservation_payment_account_id'] ?? null),
                 'reservation_payer_provider' => $validated['reservation_payer_provider'] ?? null,
                 'capacity_hold_expires_at' => $isHotel ? now('Asia/Manila')->addMinutes(30) : null,
                 'is_full_day_package'  => false,
                 'grooming_discount'    => null,
                 'total_price'          => $basePrice,
             ];
+            $appointmentData = $this->filterAppointmentDataToExistingColumns($appointmentData);
             $appointment = Appointment::create($appointmentData);
 
             $this->createBookedPackages($appointment, $orderedServices, $pricesByService, 'pending');
@@ -1005,6 +1009,22 @@ class AppointmentBookingService
         return null;
     }
 
+    private function paymentAccountSnapshot(?string $accountId): ?array
+    {
+        $account = $this->configuredPaymentAccount($accountId, null);
+        if (!$account) {
+            return null;
+        }
+
+        return [
+            'id' => (string) ($account['id'] ?? $account['account_id'] ?? $accountId),
+            'type' => $account['type'] ?? $account['account_type'] ?? null,
+            'label' => $account['label'] ?? $account['provider'] ?? $account['provider_name'] ?? null,
+            'account_name' => $account['account_name'] ?? $account['accountName'] ?? null,
+            'account_number' => $account['account_number'] ?? $account['accountNumber'] ?? null,
+        ];
+    }
+
     private function authorize($ability, $arguments = []): void
     { Gate::authorize($ability, $arguments); }
     protected function supportsBookedPackages(): bool
@@ -1032,6 +1052,10 @@ class AppointmentBookingService
     {
         $existing = array_flip($this->appointmentsColumns());
         return array_values(array_filter($columns, fn($column) => isset($existing[$column])));
+    }
+    protected function filterAppointmentDataToExistingColumns(array $data): array
+    {
+        return array_intersect_key($data, array_flip($this->appointmentsColumns()));
     }
     protected function ensureAppointmentAssessment(
         string $petId,
@@ -1121,13 +1145,11 @@ class AppointmentBookingService
             && $this->availabilityService->isImmediateGroomingWalkIn($date, $startTime);
 
         if (strtolower((string) $serviceCategory) === 'hotel') {
-            $availableTimes = $this->availabilityService->hotelCheckInSlotsForDate($date);
-            $adminTimeAllowed = $this->isAdminHotelCheckInTimeAllowed($date, $startTime);
-            if (!$availableTimes && !$adminTimeAllowed) {
+            if (!$this->availabilityService->hotelOperatingHoursForDate($date)) {
                 return $this->error('No Hotel Suite check-in times are available for the selected date.', 422);
             }
-            if (!$startTime || (!in_array($this->normalizeClockTime($startTime), $availableTimes, true) && !$adminTimeAllowed)) {
-                return $this->error('The selected check-in time is no longer available. Please choose an available Hotel Suite time.', 422);
+            if (!$this->availabilityService->isHotelCheckInTimeWithinOperatingHours($date, $startTime)) {
+                return $this->error('Hotel check-in must be within the configured operating hours for the selected date.', 422);
             }
         }
 
@@ -1185,37 +1207,6 @@ class AppointmentBookingService
         }
 
         return null;
-    }
-    protected function isAdminHotelCheckInTimeAllowed(string $date, ?string $startTime): bool
-    {
-        if (!in_array(strtolower((string) Auth::user()?->role), ['admin', 'staff'], true) || !$startTime) {
-            return false;
-        }
-
-        $time = $this->normalizeClockTime($startTime);
-        if ($time < '09:00:00' || $time > '17:00:00') {
-            return false;
-        }
-
-        try {
-            $checkInDate = Carbon::createFromFormat('!Y-m-d', substr($date, 0, 10), 'Asia/Manila');
-            if (!$checkInDate || $checkInDate->format('Y-m-d') !== substr($date, 0, 10)) return false;
-        } catch (\Throwable) {
-            return false;
-        }
-
-        if (in_array($date, ShopHoursSetting::get('blocked_dates', []), true)) return false;
-        $hotelDays = ShopHoursSetting::get('schedule.hotel', [])['days'] ?? [];
-        if ($hotelDays && !in_array($checkInDate->dayOfWeek, array_map('intval', $hotelDays), true)) return false;
-
-        $dayHours = ShopHoursSetting::get('shop_hours', [])[strtolower($checkInDate->format('D'))] ?? null;
-        if (!$dayHours || strtolower(trim((string) $dayHours)) === 'closed') return false;
-        $dayHours = preg_replace('/[\x{2013}\x{2014}]/u', '-', (string) $dayHours);
-        if (!preg_match('/(\d{1,2}:\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}:\d{2})\s*(AM|PM)/i', $dayHours, $matches)) return false;
-
-        $opening = date('H:i:s', strtotime("{$matches[1]} {$matches[2]}"));
-        $closing = date('H:i:s', strtotime("{$matches[3]} {$matches[4]}"));
-        return $time >= $opening && $time <= $closing;
     }
     protected function appointmentTimeHasPassed(string $date, ?string $startTime): bool
     {

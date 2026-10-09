@@ -25,10 +25,10 @@ export const canAccessStaffPage = (user, pageId, suppliesEnabled = true) => {
 
   const type = normalizeStaffType(user?.staff_type);
   if (type === STAFF_TYPES.FRONT_DESK) {
-    return ['dashboard', 'appointment', 'customer', 'pets', 'inventory'].includes(pageId);
+    return ['dashboard', 'appointment', 'staff', 'customer', 'pets', 'inventory'].includes(pageId);
   }
   if (type === STAFF_TYPES.GROOMER) {
-    return ['dashboard', 'appointment'].includes(pageId);
+    return ['dashboard', 'appointment', 'staff'].includes(pageId);
   }
   return pageId === 'dashboard';
 };

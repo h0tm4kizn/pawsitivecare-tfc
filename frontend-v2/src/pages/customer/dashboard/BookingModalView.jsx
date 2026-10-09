@@ -202,6 +202,12 @@ export default function BookingModalView({ context }) {
               ))}
             </div>
 
+            {createdAppointment?.proof_upload_failed && (
+              <div className="w-full rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-xs text-amber-900" role="alert">
+                Your booking was saved, but the payment proof could not be uploaded. Please contact support to complete payment verification.
+              </div>
+            )}
+
             <div className="w-full rounded-xl bg-brand-teal-light border border-brand-teal/30 px-4 py-3 flex items-start gap-3 text-left">
               <i className="fa-solid fa-bell text-brand-teal text-sm shrink-0 mt-0.5" />
                 <p className="text-xs text-brand-teal leading-relaxed">

@@ -1,11 +1,11 @@
 import { AdminSkeleton, AdminLoadState } from '../../../../components/admin/AdminLoading';
-import { Camera, Pencil, Search, Trash2, UserPlus, X } from 'lucide-react';
+import { Pencil, Search, Trash2, X } from 'lucide-react';
 import StatusBadge from '../../../../components/StatusBadge';
 import StaffSummaryCards from '../StaffSummaryCards';
 import FilterSelect from '../components/FilterSelect';
 import { formatStaffDate, formatStaffId, staffLabel } from '../staffUiUtils';
 import StaffAttendanceCommissionPanel from '../components/StaffAttendanceCommissionPanel';
-import StaffRateSettingsMenu from '../components/StaffRateSettingsMenu';
+import StaffManagementActions from '../components/StaffManagementActions';
 import StaffQRCode from '../components/StaffQRCode';
 
 export default function StaffPage_MobileView({
@@ -28,6 +28,7 @@ export default function StaffPage_MobileView({
   stats = {},
   staffOptions = [],
   addToast = null,
+  isAdmin = true,
 }) {
   return (
     <section className="space-y-4 px-4 pb-10 pt-5 font-poppins">
@@ -39,26 +40,17 @@ export default function StaffPage_MobileView({
           <p className="mt-0.5 text-xs text-brand-dark-soft">Manage staff accounts and access.</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <StaffRateSettingsMenu staff={staffOptions} />
-          <button
-            type="button"
-            onClick={onScanStaff}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-brand-teal/35 bg-white px-3 py-2 text-xs font-semibold text-brand-teal-dark"
-          >
-            <Camera size={14} /> Scan Staff QR
-          </button>
-          <button
-            type="button"
-            onClick={onAddStaff}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-teal px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-teal-dark"
-          >
-            <UserPlus size={14} strokeWidth={2.6} />
-            New Staff
-          </button>
+          <StaffManagementActions
+            staff={staffOptions}
+            onAddStaff={onAddStaff}
+            onAttendance={onScanStaff}
+            canManage={isAdmin}
+            compact
+          />
         </div>
       </div>
 
-      <StaffSummaryCards stats={stats} staffLoading={loading} />
+      {isAdmin && <StaffSummaryCards stats={stats} staffLoading={loading} />}
 
       <div className="space-y-2">
         <div className="relative">
@@ -142,8 +134,13 @@ export default function StaffPage_MobileView({
             <div className="overflow-y-auto px-6 py-5 text-xs">
               <div className="space-y-4">
                 <div className="py-1">
-                  <p className="mb-2 text-center text-xs font-bold text-brand-dark">Staff QR Code</p>
-                  <StaffQRCode key={selectedStaff.id} staffId={selectedStaff.display_id} staffName={selectedStaff.name} staffUuid={selectedStaff.id} size={168} showDownload showReissue />
+                  {!isAdmin && <SheetRow label="Staff ID" value={selectedStaff.display_id || '-'} />}
+                  {isAdmin && (
+                    <>
+                      <p className="mb-2 text-center text-xs font-bold text-brand-dark">Staff QR Code</p>
+                      <StaffQRCode key={selectedStaff.id} staffId={selectedStaff.display_id} staffName={selectedStaff.name} staffUuid={selectedStaff.id} size={168} showDownload showReissue />
+                    </>
+                  )}
                 </div>
                 <SheetRow label="Email" value={selectedStaff.email || '-'} />
                 <SheetRow label="Contact" value={selectedStaff.contact_number || '-'} />
@@ -160,12 +157,12 @@ export default function StaffPage_MobileView({
                   value={formatStaffDate(selectedStaff.created_at)}
                 />
               </div>
-              <div className="mt-5">
+              {isAdmin && <div className="mt-5">
                 <StaffAttendanceCommissionPanel staff={staffOptions} selectedStaff={selectedStaff} addToast={addToast} />
-              </div>
+              </div>}
             </div>
 
-            <div className="flex gap-2 border-t border-brand-teal/15 px-6 py-4">
+            {isAdmin && <div className="flex gap-2 border-t border-brand-teal/15 px-6 py-4">
               <button
                 type="button"
                 onClick={() => onEditStaff?.(selectedStaff)}
@@ -180,7 +177,7 @@ export default function StaffPage_MobileView({
               >
                 <Trash2 size={14} /> {selectedStaff.is_active ? 'Deactivate' : 'Delete'}
               </button>
-            </div>
+            </div>}
           </div>
         </div>
       )}

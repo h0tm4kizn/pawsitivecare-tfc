@@ -57,7 +57,7 @@ class StaffController extends Controller
      */
     public function index(Request $request)
     {
-        $this->authorize('viewAny', User::class);
+        abort_unless($request->user()?->isAdmin() || $request->user()?->isStaff(), 403);
 
         $type    = User::normalizeStaffType($request->query('type', '')) ?: '';
         $availability = $request->query('availability', '');

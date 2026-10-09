@@ -1,8 +1,9 @@
-import { Camera, Search, UserPlus } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminLoadState } from '../../../components/admin/AdminLoading';
 import useMediaQuery from '../../../hooks/useMediaQuery';
 import { useStaffStore } from '../../../stores/staffStore';
+import { useAuthStore } from '../../../stores/authStore';
 import AddStaffModal from './components/AddStaffModal';
 import EditStaffModal from './components/EditStaffModal';
 import ActionConfirmModal from './components/ActionConfirmModal';
@@ -10,7 +11,7 @@ import FilterSelect from './components/FilterSelect';
 import StaffTable from './components/StaffTable';
 import ViewStaffPanel from './components/ViewStaffPanel';
 import StaffQrAttendanceScanner from './components/StaffQrAttendanceScanner';
-import StaffRateSettingsMenu from './components/StaffRateSettingsMenu';
+import StaffManagementActions from './components/StaffManagementActions';
 import StaffPage_MobileView from './mobile/StaffPage_MobileView';
 import StaffSummaryCards from './StaffSummaryCards';
 import useStaffActions from './hooks/useStaffActions';
@@ -29,6 +30,8 @@ let toastSeq = 0;
 
 export default function StaffPage() {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = String(user?.role || '').toLowerCase() === 'admin';
   const staffList = useStaffStore((state) => state.staffList);
   const loading = useStaffStore((state) => state.loading);
   const refreshing = useStaffStore((state) => state.refreshing);
@@ -175,6 +178,7 @@ export default function StaffPage() {
           onPickAction={pickAction}
           onAddStaff={() => setIsAddOpen(true)}
           onScanStaff={() => setIsQrScannerOpen(true)}
+          isAdmin={isAdmin}
           stats={stats}
           staffOptions={staffList}
           addToast={addToast}
@@ -190,29 +194,18 @@ export default function StaffPage() {
               <p className="text-sm font-medium text-brand-dark-soft">Manage staff accounts and their system access permissions</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsQrScannerOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-teal/35 bg-white px-4 py-2.5 text-sm font-semibold text-brand-teal-dark transition-colors hover:bg-brand-surface"
-              >
-                <Camera size={16} strokeWidth={2.4} />
-                Scan Staff QR
-              </button>
-              <StaffRateSettingsMenu staff={staffList} />
-              <button
-                type="button"
-                onClick={() => setIsAddOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-brand-teal px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-teal-dark"
-              >
-                <UserPlus size={16} strokeWidth={2.6} />
-                Add New Staff
-              </button>
+              <StaffManagementActions
+                staff={staffList}
+                onAddStaff={() => setIsAddOpen(true)}
+                onAttendance={() => setIsQrScannerOpen(true)}
+                canManage={isAdmin}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_400px]">
             <div className="space-y-4 xl:col-span-3">
-              <StaffSummaryCards stats={stats} staffLoading={loading} />
+              {isAdmin && <StaffSummaryCards stats={stats} staffLoading={loading} />}
 
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative min-w-[160px] flex-1">
@@ -241,6 +234,7 @@ export default function StaffPage() {
                 selectedStaffId={selectedStaff?.id}
                 onToggleSelect={(staff) => setSelectedStaff((prev) => (prev?.id === staff.id ? null : staff))}
                 onEdit={openEdit}
+                readOnly={!isAdmin}
                 actionMenuFor={actionMenuFor}
                 setActionMenuFor={setActionMenuFor}
                 actionMenuRef={actionMenuRef}
@@ -249,7 +243,7 @@ export default function StaffPage() {
             </div>
 
             <div className="hidden xl:block">
-              <ViewStaffPanel staff={selectedStaff} onEdit={openEdit} addToast={addToast} />
+              <ViewStaffPanel staff={selectedStaff} onEdit={openEdit} addToast={addToast} readOnly={!isAdmin} />
             </div>
           </div>
         </section>

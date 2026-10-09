@@ -11,6 +11,7 @@ import { CANCELLATION_REASON_OPTIONS } from './appointmentConstants';
 import SimpleField from './AppointmentInfoField';
 import HotelCheckoutConfirmation from './HotelCheckoutConfirmation';
 import HotelCheckInTimePicker from './components/HotelCheckInTimePicker';
+import { hotelCheckInTimeError } from '../../../utils/hotelCheckInTime';
 import {
   ADDON_SIZE_SUFFIX,
   LATE_CHECKIN_REASON_OPTIONS,
@@ -42,6 +43,8 @@ export default function EditModal({ isOpen, appointment, onClose, onSaved, onNot
   const [hotelSuiteId, setHotelSuiteId] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [hotelCheckInInput, setHotelCheckInInput] = useState(null);
+  const [hotelOperatingHours, setHotelOperatingHours] = useState(null);
   const timeRef = useRef(time);
   useEffect(() => {
     timeRef.current = time;
@@ -106,7 +109,10 @@ export default function EditModal({ isOpen, appointment, onClose, onSaved, onNot
     setDaycareDuration(raw.daycare_duration || '');
     setHotelSuiteId(initialHotelSuiteId);
     setDate(initialDateIso);
-    setTime(raw.start_time && String(raw.start_time).slice(0, 5) !== '00:00' ? String(raw.start_time).slice(0, 5) : '');
+    const initialTime = raw.start_time && String(raw.start_time).slice(0, 5) !== '00:00' ? String(raw.start_time).slice(0, 5) : '';
+    setTime(initialTime);
+    setHotelCheckInInput(null);
+    setHotelOperatingHours(null);
     setStatus(appointment.status || 'approved');
     setPendingHotelCheckout('');
     setGroomerId(String(raw.handled_by?.id || raw.handled_by || ''));
@@ -246,9 +252,8 @@ export default function EditModal({ isOpen, appointment, onClose, onSaved, onNot
       .then((d) => {
         const availableSlots = Array.isArray(d.data?.slots) ? d.data.slots : [];
         setSlots(availableSlots);
-        if (String(serviceCategory || '').toLowerCase() === 'hotel' && timeRef.current
-          && !availableSlots.some((slot) => String(slot).slice(0, 5) === String(timeRef.current).slice(0, 5))) {
-          setTime('');
+        if (String(serviceCategory || '').toLowerCase() === 'hotel') {
+          setHotelOperatingHours(d.data?.operating_hours || null);
         }
         // Handle occupied status for hotel appointments
         if (d.data?.reason === 'occupied') {
@@ -311,6 +316,12 @@ export default function EditModal({ isOpen, appointment, onClose, onSaved, onNot
       }
       if (isHotel && !time) {
         const message = 'Hotel check-in time is required.';
+        setError(message);
+        onNotify?.(message, 'error');
+        return;
+      }
+      if (isHotel && hotelCheckInTimeError(hotelCheckInInput || time, hotelOperatingHours, date)) {
+        const message = hotelCheckInTimeError(hotelCheckInInput || time, hotelOperatingHours, date);
         setError(message);
         onNotify?.(message, 'error');
         return;
@@ -1130,14 +1141,14 @@ export default function EditModal({ isOpen, appointment, onClose, onSaved, onNot
                                       <button key={dateStr} type="button" disabled={!selectable}
                                         onClick={() => {
                                           if (!date || hotelCheckout) {
-                                            setDate(dateStr); setHotelCheckout(''); setHotelNights('');
+                                            setDate(dateStr); setHotelCheckout(''); setHotelNights(''); setHotelCheckInInput(null);
                                             setError(''); return;
                                           }
                                           const checkIn  = dateStr < date ? dateStr : date;
                                           const checkOut = dateStr < date ? date : dateStr;
                                           const nights   = diffDays(checkIn, checkOut);
                                           if (nights < 1 || nights > 5) {
-                                            setDate(dateStr); setHotelCheckout(''); setHotelNights('');
+                                            setDate(dateStr); setHotelCheckout(''); setHotelNights(''); setHotelCheckInInput(null);
                                             setError(''); return;
                                           }
                                           // check range for blocked nights
@@ -1187,7 +1198,15 @@ export default function EditModal({ isOpen, appointment, onClose, onSaved, onNot
                             {date && hotelCheckout && (
                               <div className="mt-3">
                                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-brand-dark-soft">Hotel Check-in Time</label>
-                                <HotelCheckInTimePicker value={time} onChange={setTime} disabled={loadingSlots || noSlots} />
+                                <HotelCheckInTimePicker
+                                  value={time}
+                                  draft={hotelCheckInInput}
+                                  date={date}
+                                  operatingHours={hotelOperatingHours}
+                                  onDraftChange={setHotelCheckInInput}
+                                  onChange={setTime}
+                                  disabled={loadingSlots || noSlots}
+                                />
                               </div>
                             )}
                           </div>

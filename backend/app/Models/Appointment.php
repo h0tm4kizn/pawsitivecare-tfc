@@ -68,6 +68,7 @@ class Appointment extends Model
         'reservation_channel',
         'reservation_provider',
         'reservation_payment_account_id',
+        'reservation_payment_account_snapshot',
         'reservation_payer_provider',
         'capacity_hold_expires_at',
         'reschedule_requested_at',
@@ -94,6 +95,7 @@ class Appointment extends Model
         'promotion_final_price' => 'float',
         'capacity_hold_expires_at' => 'datetime',
         'reschedule_requested_at' => 'datetime',
+        'reservation_payment_account_snapshot' => 'array',
     ];
 
     /**

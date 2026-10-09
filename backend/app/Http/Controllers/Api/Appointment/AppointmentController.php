@@ -17,7 +17,6 @@ use App\Models\ServiceAddon;
 use App\Models\ServiceTier;
 use App\Models\HotelSuite;
 use App\Models\HotelExtensionCharge;
-use App\Models\ShopHoursSetting;
 use App\Services\HotelClusterAllocator;
 use App\Services\HotelExtensionService;
 use App\Services\AppointmentPricingService;
@@ -262,25 +261,11 @@ class AppointmentController extends Controller
             $with['bookedPackages'] = fn($q) => $q->select('id', 'appointment_id', 'booked_package_id', 'package_id', 'service_id', 'service_type', 'package_name', 'sequence_order', 'status', 'price');
         }
 
-        $paymentAccountsById = [];
-        if (!$user->isCustomer()) {
-            $paymentAccountsById = collect(ShopHoursSetting::get('payment_accounts', []))
-                ->filter(fn ($account) => is_array($account) && !empty($account['id'] ?? $account['account_id']))
-                ->mapWithKeys(fn (array $account) => [(string) ($account['id'] ?? $account['account_id']) => [
-                    'id' => (string) ($account['id'] ?? $account['account_id']),
-                    'type' => $account['type'] ?? $account['account_type'] ?? null,
-                    'label' => $account['label'] ?? $account['provider'] ?? $account['provider_name'] ?? null,
-                    'account_name' => $account['account_name'] ?? $account['accountName'] ?? null,
-                    'account_number' => $account['account_number'] ?? $account['accountNumber'] ?? null,
-                ]])
-                ->all();
-        }
-
         $appointmentColumns = $this->filterExistingAppointmentColumns([
             'id', 'appointment_code', 'pet_id', 'service_id', 'hotel_suite_id', 'handled_by', 'booked_by_owner_id',
             'status', 'reschedule_requested_at', 'appointment_date', 'start_time', 'total_price', 'deposit', 'reference_number',
             'booking_source', 'reservation_channel', 'reservation_provider', 'reservation_payment_account_id',
-            'reservation_payer_provider', 'reservation_deposit_proof_url',
+            'reservation_payment_account_snapshot', 'reservation_payer_provider', 'reservation_deposit_proof_url',
             'daycare_duration', 'hotel_nights', 'size_label', 'pet_size', 'special_instructions', 'notes', 'created_at',
             'check_in_time', 'check_out_time', 'actual_check_in_at', 'late_checkin_reason', 'late_checkin_other_reason', 'late_checkin_staff_notes',
             'actual_check_out_at', 'completed_at', 'cancellation_reason',
@@ -344,7 +329,7 @@ class AppointmentController extends Controller
         $perPage = max(1, min($perPage, $maxPerPage));
 
         $appointments = $query->orderBy('appointment_date')->orderBy('start_time')->paginate($perPage);
-        $appointments->getCollection()->transform(function (Appointment $appointment) use ($user, $paymentAccountsById) {
+        $appointments->getCollection()->transform(function (Appointment $appointment) use ($user) {
             $appointment->setAttribute('cancelled_by_name', $appointment->cancelledBy?->name);
             $appointment->setAttribute(
                 'reservation_deposit_proof_available',
@@ -354,9 +339,10 @@ class AppointmentController extends Controller
             if (!$user->isCustomer()) {
                 $appointment->setAttribute(
                     'reservation_payment_account',
-                    $paymentAccountsById[(string) $appointment->reservation_payment_account_id] ?? null,
+                    $appointment->reservation_payment_account_snapshot,
                 );
             }
+            $appointment->makeHidden('reservation_payment_account_snapshot');
             if ($user->isCustomer()) {
                 $this->applyCustomerAppointmentPresentation($appointment);
             }
