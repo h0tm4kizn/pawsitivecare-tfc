@@ -23,6 +23,50 @@ this public repository due to privacy, data-usage, and redistribution
 considerations. The repository retains the implementation and evaluation
 code necessary to document the biometric identification pipeline.
 
+## Private Development Repository
+
+PawsitiveCare is actively developed and maintained in a separate private
+GitHub repository, `thefurclub-pawsitivecare`, which serves as the project's
+primary development repository and source of truth.
+
+It contains the complete development environment, including application
+source code, development branches, internal documentation, testing
+resources, and other project materials that are not intended for public
+distribution. The repository remains private to protect confidential
+project information, client-related records, sensitive configuration,
+biometric datasets, and internal development resources. Credentials and
+secrets are intended to remain outside version control.
+
+![PawsitiveCare Private Development Repository](assets/main-priv-repo.png)
+
+*Figure 1. The private PawsitiveCare development repository maintained by the project team.*
+
+### Development Branches
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Stable and integrated version of the PawsitiveCare system. |
+| `develop` | Active development and integration of new features, improvements, and fixes. |
+| `feature/biometric-branch` | Dedicated development and experimentation for dog nose-print and cat facial recognition. |
+
+### About This Public Repository
+
+This repository, `pawsitivecare-tfc`, was created as a separate sanitized
+public academic version of PawsitiveCare for academic presentation, project
+evaluation, and technical demonstration.
+
+It provides selected application source code, architecture, implementation
+details, and project documentation. Confidential or non-public materials
+are intentionally excluded, including internal development documentation,
+private operational records, client-related information, pet image
+datasets, biometric galleries and recognition records, runtime databases,
+credentials and sensitive configuration, and other restricted project
+assets.
+
+Approved changes from the private development repository may be periodically
+incorporated into this public repository. The private repository remains
+the authoritative development source.
+
 ## Overview
 
 PawsitiveCare is a client-server web application for The Fur Club Pet Station. It centralizes pet, owner, appointment, service, hotel, inventory, payment documentation, staff operations, reporting, and access-control workflows in a responsive React interface.
